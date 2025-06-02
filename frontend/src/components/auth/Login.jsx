@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import authService from '../../services/authService';
 
-const Login = () => {
+const Login = ({ onLogin }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
@@ -14,6 +14,7 @@ const Login = () => {
     e.preventDefault();
     try {
       await authService.login(formData.email, formData.password);
+      onLogin();
       navigate('/tournaments');
     } catch (err) {
       setError(err.response?.data?.message || 'Falha ao fazer login');

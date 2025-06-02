@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import TournamentList from './components/tournaments/TournamentList';
 import CreateTournament from './components/tournaments/CreateTournament';
@@ -16,6 +16,26 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+
+  useEffect(() => {
+    // Atualiza o estado quando o token mudar
+    const checkAuth = () => {
+      setIsAuthenticated(authService.isAuthenticated());
+    };
+
+    // Verifica a autenticação a cada segundo
+    const interval = setInterval(checkAuth, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleLogout = () => {
+    authService.logout();
+    setIsAuthenticated(false);
+    window.location.href = '/login';
+  };
+
   return (
     <Router>
       <div className="min-h-screen bg-gray-100">
@@ -32,7 +52,7 @@ function App() {
                   <Link to="/tournaments" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
                     Torneios
                   </Link>
-                  {authService.isAuthenticated() && (
+                  {isAuthenticated && (
                     <Link to="/tournaments/create" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
                       Criar Torneio
                     </Link>
@@ -40,12 +60,9 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                {authService.isAuthenticated() ? (
+                {isAuthenticated ? (
                   <button
-                    onClick={() => {
-                      authService.logout();
-                      window.location.href = '/login';
-                    }}
+                    onClick={handleLogout}
                     className="text-gray-900 hover:text-gray-600"
                   >
                     Sair
@@ -67,8 +84,8 @@ function App() {
 
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
+            <Route path="/register" element={<Register onRegister={() => setIsAuthenticated(true)} />} />
             <Route path="/" element={<Navigate to="/tournaments" />} />
             <Route path="/tournaments" element={<TournamentList />} />
             <Route

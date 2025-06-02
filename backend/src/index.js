@@ -22,8 +22,8 @@ app.use(express.json());
 app.use(database);
 
 // Routes
-app.use('/auth', authRoutes);
-app.use('/tournaments', tournamentRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/tournaments', tournamentRoutes);
 
 // Basic health check endpoint
 app.get('/health', (req, res) => {

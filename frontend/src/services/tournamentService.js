@@ -1,7 +1,7 @@
 import axios from 'axios';
 import authService from './authService';
 
-const API_URL = 'http://localhost:3000';
+const API_URL = '/api';
 
 // Configurar o interceptor para adicionar o token em todas as requisições
 axios.interceptors.request.use(

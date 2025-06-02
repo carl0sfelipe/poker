@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import authService from '../../services/authService';
 
-const Register = () => {
+const Register = ({ onRegister }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
@@ -30,6 +30,7 @@ const Register = () => {
       await authService.register(formData.email, formData.password);
       // Após o registro bem-sucedido, faz login automaticamente
       await authService.login(formData.email, formData.password);
+      onRegister(); // Chama a função onRegister após o registro bem-sucedido
       navigate('/tournaments');
     } catch (err) {
       setError(err.response?.data?.message || 'Falha ao criar conta');
