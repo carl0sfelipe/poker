@@ -5,6 +5,7 @@ import authService from '../../services/authService';
 const Register = ({ onRegister }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -26,11 +27,16 @@ const Register = ({ onRegister }) => {
       return;
     }
 
+    if (!formData.name.trim()) {
+      setError('O nome é obrigatório');
+      return;
+    }
+
     try {
-      await authService.register(formData.email, formData.password);
+      await authService.register(formData.name, formData.email, formData.password);
       // Após o registro bem-sucedido, faz login automaticamente
       await authService.login(formData.email, formData.password);
-      onRegister(); // Chama a função onRegister após o registro bem-sucedido
+      onRegister();
       navigate('/tournaments');
     } catch (err) {
       setError(err.response?.data?.message || 'Falha ao criar conta');
@@ -55,6 +61,19 @@ const Register = ({ onRegister }) => {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
+              <label htmlFor="name" className="sr-only">Nome</label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Nome"
+              />
+            </div>
+            <div>
               <label htmlFor="email" className="sr-only">Email</label>
               <input
                 id="email"
@@ -63,7 +82,7 @@ const Register = ({ onRegister }) => {
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Email"
               />
             </div>

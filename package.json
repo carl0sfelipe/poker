@@ -4,7 +4,8 @@
   "description": "Poker Tournament Management System",
   "scripts": {
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
-    "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install"
+    "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "start": "node start.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

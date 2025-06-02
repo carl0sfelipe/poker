@@ -8,11 +8,9 @@ const CreateTournament = () => {
     name: '',
     start_time: '',
     starting_stack: 10000,
-    blind_structure: {
-      levels: [
-        { level: 1, small_blind: 25, big_blind: 50, duration: 20 }
-      ]
-    }
+    blind_structure: [
+      { level: 1, small_blind: 100, big_blind: 200, duration: 15 }
+    ]
   });
   const [error, setError] = useState(null);
 
@@ -27,20 +25,18 @@ const CreateTournament = () => {
   };
 
   const addBlindLevel = () => {
-    const lastLevel = formData.blind_structure.levels[formData.blind_structure.levels.length - 1];
+    const lastLevel = formData.blind_structure[formData.blind_structure.length - 1];
     setFormData({
       ...formData,
-      blind_structure: {
-        levels: [
-          ...formData.blind_structure.levels,
-          {
-            level: lastLevel.level + 1,
-            small_blind: lastLevel.small_blind * 2,
-            big_blind: lastLevel.big_blind * 2,
-            duration: 20
-          }
-        ]
-      }
+      blind_structure: [
+        ...formData.blind_structure,
+        {
+          level: lastLevel.level + 1,
+          small_blind: lastLevel.small_blind * 2,
+          big_blind: lastLevel.big_blind * 2,
+          duration: 15
+        }
+      ]
     });
   };
 
@@ -49,11 +45,11 @@ const CreateTournament = () => {
     if (isNaN(numValue)) return;
 
     if (index !== null) {
-      const newLevels = [...formData.blind_structure.levels];
+      const newLevels = [...formData.blind_structure];
       newLevels[index][field] = numValue;
       setFormData({
         ...formData,
-        blind_structure: { levels: newLevels }
+        blind_structure: newLevels
       });
     } else {
       setFormData({ ...formData, [field]: numValue });
@@ -118,7 +114,7 @@ const CreateTournament = () => {
           </div>
           
           <div className="space-y-2">
-            {formData.blind_structure.levels.map((level, index) => (
+            {formData.blind_structure.map((level, index) => (
               <div key={index} className="grid grid-cols-4 gap-2">
                 <input
                   type="number"

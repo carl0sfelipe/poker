@@ -21,21 +21,28 @@ const authService = {
     const response = await axios.post(`${API_URL}/auth/login`, { email, password });
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
     }
     return response.data;
   },
 
-  async register(email, password) {
-    const response = await axios.post(`${API_URL}/auth/register`, { email, password });
+  async register(name, email, password) {
+    const response = await axios.post(`${API_URL}/auth/register`, { name, email, password });
     return response.data;
   },
 
   logout() {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
   },
 
   getToken() {
     return localStorage.getItem('token');
+  },
+
+  getUser() {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
   },
 
   isAuthenticated() {

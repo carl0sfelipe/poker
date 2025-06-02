@@ -56,6 +56,7 @@ const TournamentDetail = () => {
   if (loading) return <div className="text-center p-4">Loading...</div>;
   if (error) return <div className="text-red-500 p-4">{error}</div>;
   if (!tournament) return <div className="text-center p-4">Tournament not found</div>;
+  if (!tournament.blind_structure) return <div className="text-center p-4">Invalid tournament data</div>;
 
   return (
     <div className="container mx-auto p-4">
@@ -95,7 +96,7 @@ const TournamentDetail = () => {
           <div>
             <h2 className="text-xl font-semibold mb-4">Blind Structure</h2>
             <div className="space-y-2">
-              {tournament.blind_structure.levels.map((level) => (
+              {Array.isArray(tournament.blind_structure) && tournament.blind_structure.map((level) => (
                 <div
                   key={level.level}
                   className="flex justify-between p-2 bg-gray-50 rounded"
@@ -111,10 +112,12 @@ const TournamentDetail = () => {
           </div>
 
           <div>
-            <TournamentTimer
-              blindStructure={tournament.blind_structure}
-              startTime={tournament.start_time}
-            />
+            {Array.isArray(tournament.blind_structure) && (
+              <TournamentTimer
+                blindStructure={tournament.blind_structure}
+                startTime={tournament.start_time}
+              />
+            )}
           </div>
         </div>
 

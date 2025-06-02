@@ -5,7 +5,22 @@ const tournamentController = {
   async create(req, res) {
     try {
       const { name, start_time, starting_stack, blind_structure } = req.body;
-      
+      // Estrutura padrão de blinds
+      const defaultBlindStructure = [
+        { level: 1, smallBlind: 100, bigBlind: 200, duration: 15 },
+        { level: 2, smallBlind: 200, bigBlind: 400, duration: 15 },
+        { level: 3, smallBlind: 300, bigBlind: 600, duration: 15 },
+        { level: 4, smallBlind: 400, bigBlind: 800, duration: 15 },
+        { level: 5, smallBlind: 500, bigBlind: 1000, duration: 15 },
+        { level: 6, smallBlind: 600, bigBlind: 1200, duration: 15 },
+        { level: 7, smallBlind: 800, bigBlind: 1600, duration: 15 },
+        { level: 8, smallBlind: 1000, bigBlind: 2000, duration: 15 },
+        { level: 9, smallBlind: 1500, bigBlind: 3000, duration: 15 },
+        { level: 10, smallBlind: 2000, bigBlind: 4000, duration: 15 }
+      ];
+      const blinds = blind_structure && Array.isArray(blind_structure) && blind_structure.length > 0
+        ? blind_structure
+        : defaultBlindStructure;
       const { data, error } = await supabase
         .from('tournaments')
         .insert([
@@ -14,7 +29,7 @@ const tournamentController = {
             name,
             start_time,
             starting_stack,
-            blind_structure,
+            blind_structure: blinds,
             status: 'pending'
           }
         ])

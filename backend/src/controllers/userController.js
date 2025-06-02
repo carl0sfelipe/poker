@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const userController = {
   async register(req, res) {
     try {
-      const { email, password, role = 'player' } = req.body;
+      const { name, email, password, role = 'player' } = req.body;
       
       // Check if user already exists
       const { data: existingUser, error: checkError } = await req.db
@@ -32,18 +32,19 @@ const userController = {
         .insert([
           {
             id: uuidv4(),
+            name,
             email,
             password_hash: passwordHash,
             role
           }
         ])
-        .select('id, email, role')
+        .select('id, name, email, role')
         .single();
 
       if (insertError) throw insertError;
 
       const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        { id: user.id, name: user.name, email: user.email, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
@@ -80,7 +81,7 @@ const userController = {
 
       // Generate token
       const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        { id: user.id, name: user.name, email: user.email, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
@@ -88,6 +89,7 @@ const userController = {
       res.json({
         user: {
           id: user.id,
+          name: user.name,
           email: user.email,
           role: user.role
         },
@@ -103,7 +105,7 @@ const userController = {
     try {
       const { data: user, error } = await req.db
         .from('users')
-        .select('id, email, role, created_at')
+        .select('id, name, email, role, created_at')
         .eq('id', req.user.id)
         .single();
 

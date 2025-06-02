@@ -17,11 +17,13 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+  const [user, setUser] = useState(authService.getUser());
 
   useEffect(() => {
     // Atualiza o estado quando o token mudar
     const checkAuth = () => {
       setIsAuthenticated(authService.isAuthenticated());
+      setUser(authService.getUser());
     };
 
     // Verifica a autenticação a cada segundo
@@ -33,6 +35,7 @@ function App() {
   const handleLogout = () => {
     authService.logout();
     setIsAuthenticated(false);
+    setUser(null);
     window.location.href = '/login';
   };
 
@@ -61,12 +64,17 @@ function App() {
               </div>
               <div className="flex items-center space-x-4">
                 {isAuthenticated ? (
-                  <button
-                    onClick={handleLogout}
-                    className="text-gray-900 hover:text-gray-600"
-                  >
-                    Sair
-                  </button>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-gray-900">
+                      Olá, {user?.name || 'Usuário'}
+                    </span>
+                    <button
+                      onClick={handleLogout}
+                      className="text-gray-900 hover:text-gray-600"
+                    >
+                      Sair
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <Link to="/login" className="text-gray-900 hover:text-gray-600">
