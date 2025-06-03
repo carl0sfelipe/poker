@@ -43,10 +43,49 @@ const tournamentService = {
 
   async create(tournamentData) {
     try {
-      const response = await axios.post(`${API_URL}/tournaments`, tournamentData);
+      console.log('Creating tournament with data:', JSON.stringify(tournamentData, null, 2));
+      
+      // Ensure all numeric fields are properly parsed
+      const formattedData = {
+        ...tournamentData,
+        starting_stack: parseInt(tournamentData.starting_stack),
+        bonuses: tournamentData.bonuses.map(bonus => ({
+          ...bonus,
+          stack: parseInt(bonus.stack)
+        })),
+        addon: {
+          ...tournamentData.addon,
+          stack: parseInt(tournamentData.addon.stack),
+          price: parseInt(tournamentData.addon.price)
+        },
+        rebuy: {
+          ...tournamentData.rebuy,
+          single: {
+            ...tournamentData.rebuy.single,
+            stack: parseInt(tournamentData.rebuy.single.stack),
+            price: parseInt(tournamentData.rebuy.single.price)
+          },
+          double: {
+            ...tournamentData.rebuy.double,
+            stack: parseInt(tournamentData.rebuy.double.stack),
+            price: parseInt(tournamentData.rebuy.double.price)
+          }
+        }
+      };
+
+      console.log('Formatted tournament data:', JSON.stringify(formattedData, null, 2));
+      
+      const response = await axios.post(`${API_URL}/tournaments`, formattedData);
+      console.log('Tournament creation response:', response);
+      
       return response.data;
     } catch (error) {
-      console.error('Create error:', error);
+      console.error('Create tournament error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       throw this._handleError(error);
     }
   },

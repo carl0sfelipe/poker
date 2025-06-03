@@ -5,43 +5,200 @@ const bcrypt = require('bcrypt');
 const tournamentController = {
   async create(req, res) {
     try {
-      const { name, start_time, starting_stack, blind_structure } = req.body;
-      // Estrutura padrão de blinds
-      const defaultBlindStructure = [
-        { level: 1, smallBlind: 100, bigBlind: 200, duration: 15 },
-        { level: 2, smallBlind: 200, bigBlind: 400, duration: 15 },
-        { level: 3, smallBlind: 300, bigBlind: 600, duration: 15 },
-        { level: 4, smallBlind: 400, bigBlind: 800, duration: 15 },
-        { level: 5, smallBlind: 500, bigBlind: 1000, duration: 15 },
-        { level: 6, smallBlind: 600, bigBlind: 1200, duration: 15 },
-        { level: 7, smallBlind: 800, bigBlind: 1600, duration: 15 },
-        { level: 8, smallBlind: 1000, bigBlind: 2000, duration: 15 },
-        { level: 9, smallBlind: 1500, bigBlind: 3000, duration: 15 },
-        { level: 10, smallBlind: 2000, bigBlind: 4000, duration: 15 }
-      ];
-      const blinds = blind_structure && Array.isArray(blind_structure) && blind_structure.length > 0
-        ? blind_structure
-        : defaultBlindStructure;
-      const { data, error } = await supabase
-        .from('tournaments')
-        .insert([
-          {
-            id: uuidv4(),
-            name,
-            start_time,
-            starting_stack,
-            blind_structure: blinds,
-            status: 'pending'
+      console.log('Received tournament creation request:', JSON.stringify(req.body, null, 2));
+      
+      const { 
+        name, 
+        start_time, 
+        starting_stack,
+        blind_structure,
+        bonuses = [], 
+        addon = {
+          allowed: false,
+          stack: 0,
+          price: 0
+        },
+        rebuy = {
+          allowed: false,
+          single: {
+            stack: 0,
+            price: 0
+          },
+          double: {
+            stack: 0,
+            price: 0
           }
-        ])
-        .select()
-        .single();
+        }
+      } = req.body;
 
-      if (error) throw error;
-      res.status(201).json(data);
+      // Validate required fields
+      if (!name || !start_time || !starting_stack || !blind_structure) {
+        console.error('Missing required fields:', { name, start_time, starting_stack, blind_structure });
+        return res.status(400).json({ 
+          error: 'Missing required fields',
+          details: {
+            name: !name,
+            start_time: !start_time,
+            starting_stack: !starting_stack,
+            blind_structure: !blind_structure
+          }
+        });
+      }
+
+      // Validate bonus structure if any bonuses are provided
+      if (bonuses.length > 0) {
+        const invalidBonuses = bonuses.filter(bonus => {
+          // Check for required fields
+          if (!bonus.name || !bonus.stack || !bonus.condition) {
+            return true;
+          }
+          
+          // Validate name format (at least 3 chars, alphanumeric with spaces)
+          const validName = typeof bonus.name === 'string' && 
+                          bonus.name.trim().length >= 3 &&
+                          /^[a-zA-Z0-9\s]+$/.test(bonus.name.trim());
+          
+          // Validate condition (at least 5 chars)
+          const validCondition = typeof bonus.condition === 'string' && 
+                               bonus.condition.trim().length >= 5;
+          
+          // Validate stack (must be positive number)
+          const validStack = typeof bonus.stack === 'number' && 
+                           Number.isInteger(bonus.stack) && 
+                           bonus.stack > 0;
+          
+          return !validName || !validCondition || !validStack;
+        });
+
+        if (invalidBonuses.length > 0) {
+          console.error('Invalid bonus structure:', invalidBonuses);
+          return res.status(400).json({ 
+            error: 'Invalid bonus structure', 
+            details: 'Each bonus must have a valid name (3+ alphanumeric chars), condition (5+ chars), and positive stack value',
+            invalidBonuses 
+          });
+        }
+      }
+
+      // Validate addon if enabled
+      if (addon.allowed) {
+        if (!addon.stack || !addon.price) {
+          console.error('Invalid addon configuration:', addon);
+          return res.status(400).json({ 
+            error: 'Invalid addon configuration',
+            details: 'Add-on must have stack and price when allowed'
+          });
+        }
+      }
+
+      // Validate rebuy if enabled
+      if (rebuy.allowed) {
+        const rebuyErrors = [];
+        if (!rebuy.single?.stack || !rebuy.single?.price) {
+          rebuyErrors.push('Single rebuy must have stack and price when allowed');
+        }
+        if (!rebuy.double?.stack || !rebuy.double?.price) {
+          rebuyErrors.push('Double rebuy must have stack and price when allowed');
+        }
+        if (rebuyErrors.length > 0) {
+          console.error('Invalid rebuy configuration:', { rebuy, errors: rebuyErrors });
+          return res.status(400).json({ 
+            error: 'Invalid rebuy configuration',
+            details: rebuyErrors
+          });
+        }
+      }
+
+      // Format bonus data - ensure it's a proper JSONB array
+      const formattedBonuses = bonuses.map(bonus => ({
+        name: String(bonus.name || '').trim().replace(/[^a-zA-Z0-9\s]/g, ''),
+        stack: Number(bonus.stack),
+        condition: String(bonus.condition || '').trim()
+      }));
+
+      // Format addon data with explicit type conversion
+      const formattedAddon = {
+        allowed: Boolean(addon.allowed),
+        stack: parseInt(addon.stack || 0),
+        price: parseInt(addon.price || 0)
+      };
+
+      // Format rebuy data with explicit type conversion
+      const formattedRebuy = {
+        allowed: Boolean(rebuy.allowed),
+        single: {
+          stack: parseInt(rebuy.single?.stack || 0),
+          price: parseInt(rebuy.single?.price || 0)
+        },
+        double: {
+          stack: parseInt(rebuy.double?.stack || 0),
+          price: parseInt(rebuy.double?.price || 0)
+        }
+      };
+
+      // Normalize blind structure
+      const normalizedBlindStructure = blind_structure.map(level => ({
+        level: parseInt(level.level),
+        smallBlind: parseInt(level.small_blind || level.smallBlind),
+        bigBlind: parseInt(level.big_blind || level.bigBlind),
+        duration: parseInt(level.duration)
+      }));
+
+      // Create the tournament data object
+      const tournamentData = {
+        id: uuidv4(),
+        name: String(name).trim(),
+        start_time,
+        starting_stack: Number(starting_stack),
+        blind_structure: normalizedBlindStructure,
+        status: 'pending',
+        bonuses: formattedBonuses, // Send as array of objects
+        addon: formattedAddon,
+        rebuy: formattedRebuy
+      };
+
+      // Log only the bonuses field for debugging
+      console.log('Bonuses to be sent:', JSON.stringify(tournamentData.bonuses));
+
+      try {
+        const { data, error } = await supabase
+          .from('tournaments')
+          .insert([tournamentData])
+          .select()
+          .single();
+
+        if (error) {
+          // Log only the error and bonuses field
+          console.error('Supabase error:', error.message, 'Bonuses:', JSON.stringify(tournamentData.bonuses));
+          return res.status(500).json({
+            error: 'Database error',
+            message: error.message,
+            code: error.code
+          });
+        }
+        res.status(201).json(data);
+      } catch (error) {
+        // Log only the error and bonuses field
+        console.error('Create tournament error:', error.message, 'Bonuses:', JSON.stringify(tournamentData.bonuses));
+        res.status(500).json({
+          error: 'Internal server error',
+          message: error.message
+        });
+      }
     } catch (error) {
-      console.error('Create tournament error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Create tournament error:', {
+        error,
+        message: error.message,
+        stack: error.stack,
+        details: error.details || 'No additional details'
+      });
+      
+      res.status(500).json({ 
+        error: 'Internal server error', 
+        message: error.message,
+        details: error.details || error.hint || 'No additional details',
+        type: error.constructor.name
+      });
     }
   },
 
@@ -101,6 +258,7 @@ const tournamentController = {
     try {
       const { id: tournamentId } = req.params;
       const userId = req.user.id;
+      const { selectedBonuses = [] } = req.body;
 
       // Check if already registered
       const { data: existingRegistration } = await supabase
@@ -114,6 +272,35 @@ const tournamentController = {
         return res.status(400).json({ error: 'Already registered for this tournament' });
       }
 
+      // Get tournament details to validate bonuses
+      const { data: tournament, error: tournamentError } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('id', tournamentId)
+        .single();
+
+      if (tournamentError) throw tournamentError;
+
+      // Validate selected bonuses
+      if (selectedBonuses.length > 0) {
+        const validBonusIds = tournament.bonuses.map(b => b.name);
+        const invalidBonuses = selectedBonuses.filter(b => !validBonusIds.includes(b));
+        if (invalidBonuses.length > 0) {
+          return res.status(400).json({ 
+            error: `Invalid bonus selections: ${invalidBonuses.join(', ')}` 
+          });
+        }
+      }
+
+      // Calculate initial stack with bonuses
+      let totalStack = tournament.starting_stack;
+      selectedBonuses.forEach(bonusName => {
+        const bonus = tournament.bonuses.find(b => b.name === bonusName);
+        if (bonus) {
+          totalStack += bonus.stack;
+        }
+      });
+
       const { data, error } = await supabase
         .from('registrations')
         .insert([
@@ -121,7 +308,11 @@ const tournamentController = {
             id: uuidv4(),
             user_id: userId,
             tournament_id: tournamentId,
-            checked_in: false
+            checked_in: false,
+            current_stack: totalStack,
+            selected_bonuses: selectedBonuses,
+            rebuys: [],
+            addon_used: false
           }
         ])
         .select()
@@ -131,6 +322,112 @@ const tournamentController = {
       res.status(201).json(data);
     } catch (error) {
       console.error('Register for tournament error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
+  async addRebuy(req, res) {
+    try {
+      const { id: tournamentId } = req.params;
+      const { userId, isDouble = false } = req.body;
+
+      // Get tournament and registration details
+      const { data: tournament } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('id', tournamentId)
+        .single();
+
+      if (!tournament.rebuy.allowed) {
+        return res.status(400).json({ error: 'Rebuys are not allowed in this tournament' });
+      }
+
+      const { data: registration, error: regError } = await supabase
+        .from('registrations')
+        .select('*')
+        .eq('tournament_id', tournamentId)
+        .eq('user_id', userId)
+        .single();
+
+      if (regError) throw regError;
+
+      // Add rebuy stack
+      const rebuyStack = isDouble ? 
+        tournament.rebuy.double.stack : 
+        tournament.rebuy.single.stack;
+
+      const newStack = registration.current_stack + rebuyStack;
+      const newRebuy = {
+        timestamp: new Date().toISOString(),
+        type: isDouble ? 'double' : 'single',
+        stack: rebuyStack
+      };
+
+      const { data, error } = await supabase
+        .from('registrations')
+        .update({ 
+          current_stack: newStack,
+          rebuys: [...registration.rebuys, newRebuy]
+        })
+        .eq('tournament_id', tournamentId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.json(data);
+    } catch (error) {
+      console.error('Add rebuy error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
+  async addAddon(req, res) {
+    try {
+      const { id: tournamentId } = req.params;
+      const { userId } = req.body;
+
+      // Get tournament and registration details
+      const { data: tournament } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('id', tournamentId)
+        .single();
+
+      if (!tournament.addon.allowed) {
+        return res.status(400).json({ error: 'Add-ons are not allowed in this tournament' });
+      }
+
+      const { data: registration, error: regError } = await supabase
+        .from('registrations')
+        .select('*')
+        .eq('tournament_id', tournamentId)
+        .eq('user_id', userId)
+        .single();
+
+      if (regError) throw regError;
+
+      if (registration.addon_used) {
+        return res.status(400).json({ error: 'Add-on already used' });
+      }
+
+      const newStack = registration.current_stack + tournament.addon.stack;
+
+      const { data, error } = await supabase
+        .from('registrations')
+        .update({ 
+          current_stack: newStack,
+          addon_used: true
+        })
+        .eq('tournament_id', tournamentId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.json(data);
+    } catch (error) {
+      console.error('Add addon error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   },

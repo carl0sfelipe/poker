@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS tournaments (
     starting_stack INTEGER NOT NULL,
     blind_structure JSONB NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'scheduled',
+    bonuses JSONB[] DEFAULT '{}',
+    addon JSONB DEFAULT '{"allowed": false, "stack": 0, "price": 0}',
+    rebuy JSONB DEFAULT '{"allowed": false, "single": {"stack": 0, "price": 0}, "double": {"stack": 0, "price": 0}}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
