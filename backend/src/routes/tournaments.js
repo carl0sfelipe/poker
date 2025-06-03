@@ -13,5 +13,6 @@ router.post('/:id/register', auth, tournamentController.register);
 router.post('/:id/checkin', auth, checkRole(['admin', 'staff']), tournamentController.checkIn);
 router.post('/:id/eliminate', auth, checkRole(['admin', 'staff']), tournamentController.eliminate);
 router.get('/:id/export', auth, checkRole(['admin', 'staff']), tournamentController.exportResults);
+router.post('/:id/delete', auth, checkRole(['admin', 'staff']), tournamentController.delete);
 
 module.exports = router; 

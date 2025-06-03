@@ -5,6 +5,7 @@ import CreateTournament from './components/tournaments/CreateTournament';
 import TournamentDetail from './components/tournaments/TournamentDetail';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import StaffRoute from './components/auth/StaffRoute';
 import authService from './services/authService';
 
 // Componente para proteger rotas que requerem autenticação
@@ -55,7 +56,7 @@ function App() {
                   <Link to="/tournaments" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
                     Torneios
                   </Link>
-                  {isAuthenticated && (
+                  {isAuthenticated && authService.isStaff() && (
                     <Link to="/tournaments/create" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-gray-300">
                       Criar Torneio
                     </Link>
@@ -66,7 +67,7 @@ function App() {
                 {isAuthenticated ? (
                   <div className="flex items-center space-x-4">
                     <span className="text-gray-900">
-                      Olá, {user?.name || 'Usuário'}
+                      Olá, {user?.name || 'Usuário'} {user?.role && `(${user.role})`}
                     </span>
                     <button
                       onClick={handleLogout}
@@ -99,9 +100,9 @@ function App() {
             <Route
               path="/tournaments/create"
               element={
-                <ProtectedRoute>
+                <StaffRoute>
                   <CreateTournament />
-                </ProtectedRoute>
+                </StaffRoute>
               }
             />
             <Route path="/tournaments/:id" element={<TournamentDetail />} />

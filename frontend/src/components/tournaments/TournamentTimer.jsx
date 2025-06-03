@@ -1,24 +1,26 @@
 import React, { useState, useEffect } from 'react';
 
-const TournamentTimer = ({ blindStructure, startTime }) => {
+const TournamentTimer = ({ tournament }) => {
   const [currentLevel, setCurrentLevel] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutos em segundos
+  const [timeLeft, setTimeLeft] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [levelTimes, setLevelTimes] = useState([]);
 
-  // Calcular horários previstos para cada nível
   useEffect(() => {
-    if (!blindStructure || !Array.isArray(blindStructure)) return;
+    if (!tournament?.blind_structure || !Array.isArray(tournament.blind_structure)) return;
 
+    // Inicializar o timer com o primeiro nível
+    setCurrentLevel(0);
+    setTimeLeft(tournament.blind_structure[0].duration * 60);
+
+    // Calcular horários previstos para cada nível
     const calculateLevelTimes = () => {
       const times = [];
-      let accumulatedMinutes = 0;
+      let currentTime = new Date(tournament.start_time);
 
-      blindStructure.forEach((level) => {
-        const startTime = new Date();
-        startTime.setMinutes(startTime.getMinutes() + accumulatedMinutes);
-        
-        const endTime = new Date(startTime);
+      tournament.blind_structure.forEach((level) => {
+        const startTime = new Date(currentTime);
+        const endTime = new Date(currentTime);
         endTime.setMinutes(endTime.getMinutes() + level.duration);
 
         times.push({
@@ -29,21 +31,14 @@ const TournamentTimer = ({ blindStructure, startTime }) => {
           bigBlind: level.big_blind
         });
 
-        accumulatedMinutes += level.duration;
+        currentTime = new Date(endTime);
       });
 
       setLevelTimes(times);
     };
 
     calculateLevelTimes();
-  }, [blindStructure]);
-
-  // Reset timer quando mudar de nível
-  useEffect(() => {
-    if (blindStructure && blindStructure[currentLevel]) {
-      setTimeLeft(blindStructure[currentLevel].duration * 60);
-    }
-  }, [currentLevel, blindStructure]);
+  }, [tournament]);
 
   // Timer principal
   useEffect(() => {
@@ -52,11 +47,12 @@ const TournamentTimer = ({ blindStructure, startTime }) => {
       timer = setInterval(() => {
         setTimeLeft((prev) => prev - 1);
       }, 1000);
-    } else if (timeLeft === 0 && currentLevel < blindStructure.length - 1) {
+    } else if (timeLeft === 0 && tournament?.blind_structure && currentLevel < tournament.blind_structure.length - 1) {
       setCurrentLevel((prev) => prev + 1);
+      setTimeLeft(tournament.blind_structure[currentLevel + 1].duration * 60);
     }
     return () => clearInterval(timer);
-  }, [isRunning, timeLeft, currentLevel, blindStructure]);
+  }, [isRunning, timeLeft, currentLevel, tournament]);
 
   const startTimer = () => {
     setIsRunning(true);
@@ -67,13 +63,14 @@ const TournamentTimer = ({ blindStructure, startTime }) => {
   };
 
   const resetTimer = () => {
+    if (!tournament?.blind_structure) return;
     setCurrentLevel(0);
-    setTimeLeft(blindStructure[0].duration * 60);
+    setTimeLeft(tournament.blind_structure[0].duration * 60);
     setIsRunning(false);
   };
 
-  if (!blindStructure || !Array.isArray(blindStructure) || blindStructure.length === 0) {
-    return <div>Invalid blind structure</div>;
+  if (!tournament?.blind_structure || !Array.isArray(tournament.blind_structure)) {
+    return <div className="text-red-600">Invalid blind structure</div>;
   }
 
   const formatTime = (seconds) => {
@@ -82,62 +79,76 @@ const TournamentTimer = ({ blindStructure, startTime }) => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  const currentBlindLevel = tournament.blind_structure[currentLevel];
+
   return (
-    <div className="bg-white p-4 rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">Tournament Timer</h2>
-      <div className="text-center">
-        <div className="text-3xl font-bold mb-2">
-          {formatTime(timeLeft)}
-        </div>
-        <div className="text-lg mb-4">
-          Level {blindStructure[currentLevel].level}: {blindStructure[currentLevel].small_blind}/{blindStructure[currentLevel].big_blind}
-        </div>
-        
-        <div className="flex justify-center space-x-4 mb-6">
-          {!isRunning ? (
+    <div className="bg-white p-6 rounded-lg shadow mt-6">
+      <h2 className="text-2xl font-semibold mb-6">Tournament Timer</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="text-center">
+          <div className="text-4xl font-bold mb-4">
+            {formatTime(timeLeft)}
+          </div>
+          <div className="text-xl mb-4">
+            Level {currentBlindLevel.level}: {currentBlindLevel.small_blind}/{currentBlindLevel.big_blind}
+          </div>
+          
+          <div className="flex justify-center space-x-4 mb-6">
+            {!isRunning ? (
+              <button
+                onClick={startTimer}
+                className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                Start
+              </button>
+            ) : (
+              <button
+                onClick={pauseTimer}
+                className="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+              >
+                Pause
+              </button>
+            )}
             <button
-              onClick={startTimer}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+              onClick={resetTimer}
+              className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
             >
-              Start
+              Reset
             </button>
-          ) : (
-            <button
-              onClick={pauseTimer}
-              className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-            >
-              Pause
-            </button>
-          )}
-          <button
-            onClick={resetTimer}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-          >
-            Reset
-          </button>
+          </div>
         </div>
 
-        <div className="mt-4">
-          <h3 className="text-lg font-semibold mb-2">Blind Schedule</h3>
-          <div className="max-h-60 overflow-y-auto">
-            {levelTimes.map((level, index) => (
-              <div 
-                key={level.level}
-                className={`p-2 text-sm ${
-                  index === currentLevel 
-                    ? 'bg-blue-100 font-bold' 
-                    : index < currentLevel 
-                    ? 'bg-gray-100' 
-                    : ''
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <span>Level {level.level}</span>
-                  <span>{level.smallBlind}/{level.bigBlind}</span>
-                  <span>{level.startTime} - {level.endTime}</span>
-                </div>
-              </div>
-            ))}
+        <div>
+          <h3 className="text-lg font-semibold mb-4">Blind Schedule</h3>
+          <div className="max-h-[400px] overflow-y-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Blinds</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {levelTimes.map((level, index) => (
+                  <tr 
+                    key={level.level}
+                    className={`${
+                      index === currentLevel 
+                        ? 'bg-blue-50 font-semibold' 
+                        : index < currentLevel 
+                        ? 'text-gray-400' 
+                        : ''
+                    }`}
+                  >
+                    <td className="px-4 py-2">{level.level}</td>
+                    <td className="px-4 py-2">{level.smallBlind}/{level.bigBlind}</td>
+                    <td className="px-4 py-2">{level.startTime}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

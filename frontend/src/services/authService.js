@@ -47,6 +47,16 @@ const authService = {
 
   isAuthenticated() {
     return !!this.getToken();
+  },
+
+  isStaff() {
+    const user = this.getUser();
+    return user && (user.role === 'staff' || user.role === 'admin');
+  },
+
+  hasRole(roles) {
+    const user = this.getUser();
+    return user && roles.includes(user.role);
   }
 };
 

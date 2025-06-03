@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import tournamentService from '../../services/tournamentService';
+import authService from '../../services/authService';
 
 const PlayerManagement = ({ tournamentId }) => {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const isStaff = authService.isStaff();
 
   useEffect(() => {
+    if (!isStaff) {
+      setError('Unauthorized access');
+      setLoading(false);
+      return;
+    }
     loadPlayers();
-  }, [tournamentId]);
+  }, [tournamentId, isStaff]);
 
   const loadPlayers = async () => {
     try {
@@ -22,6 +29,7 @@ const PlayerManagement = ({ tournamentId }) => {
   };
 
   const handleCheckIn = async (userId) => {
+    if (!isStaff) return;
     try {
       await tournamentService.checkIn(tournamentId, userId);
       loadPlayers();
@@ -31,6 +39,7 @@ const PlayerManagement = ({ tournamentId }) => {
   };
 
   const handleEliminate = async (userId) => {
+    if (!isStaff) return;
     try {
       await tournamentService.eliminate(tournamentId, userId);
       loadPlayers();
@@ -39,62 +48,55 @@ const PlayerManagement = ({ tournamentId }) => {
     }
   };
 
+  if (!isStaff) return null;
   if (loading) return <div className="text-center p-4">Loading players...</div>;
   if (error) return <div className="text-red-500 p-4">{error}</div>;
 
   return (
-    <div>
+    <div className="mt-8">
       <h2 className="text-xl font-semibold mb-4">Player Management</h2>
-      
       <div className="overflow-x-auto">
-        <table className="min-w-full bg-white">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="px-6 py-3 text-left">Player</th>
-              <th className="px-6 py-3 text-left">Status</th>
-              <th className="px-6 py-3 text-left">Table</th>
-              <th className="px-6 py-3 text-left">Seat</th>
-              <th className="px-6 py-3 text-left">Place</th>
-              <th className="px-6 py-3 text-left">Actions</th>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Player
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
-          <tbody>
-            {players.map((player) => (
-              <tr key={player.id} className="border-b">
-                <td className="px-6 py-4">{player.user.email}</td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`px-2 py-1 rounded ${
-                      player.checked_in
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    {player.checked_in ? 'Checked In' : 'Registered'}
-                  </span>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {players.map((registration) => (
+              <tr key={registration.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {registration.user?.email || 'Unknown'}
                 </td>
-                <td className="px-6 py-4">{player.table_number || '-'}</td>
-                <td className="px-6 py-4">{player.seat_number || '-'}</td>
-                <td className="px-6 py-4">{player.finish_place || '-'}</td>
-                <td className="px-6 py-4">
-                  <div className="space-x-2">
-                    {!player.checked_in && (
-                      <button
-                        onClick={() => handleCheckIn(player.user.id)}
-                        className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                      >
-                        Check In
-                      </button>
-                    )}
-                    {player.checked_in && !player.finish_place && (
-                      <button
-                        onClick={() => handleEliminate(player.user.id)}
-                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                      >
-                        Eliminate
-                      </button>
-                    )}
-                  </div>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {registration.checked_in ? 'Checked In' : 'Registered'}
+                  {registration.finish_place && ` - Finished ${registration.finish_place}th`}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {!registration.checked_in && (
+                    <button
+                      onClick={() => handleCheckIn(registration.user_id)}
+                      className="text-blue-600 hover:text-blue-900 mr-4"
+                    >
+                      Check In
+                    </button>
+                  )}
+                  {registration.checked_in && !registration.finish_place && (
+                    <button
+                      onClick={() => handleEliminate(registration.user_id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Eliminate
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import tournamentService from '../../services/tournamentService';
+import authService from '../../services/authService';
 
 const TournamentList = () => {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const isStaff = authService.isStaff();
 
   useEffect(() => {
     loadTournaments();
@@ -54,23 +56,27 @@ const TournamentList = () => {
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Tournaments</h1>
-        <Link
-          to="/tournaments/create"
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Create Tournament
-        </Link>
+        {isStaff && (
+          <Link
+            to="/tournaments/create"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Create Tournament
+          </Link>
+        )}
       </div>
 
       {tournaments.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-500 text-lg">No tournaments found.</p>
-          <Link
-            to="/tournaments/create"
-            className="inline-block mt-4 text-blue-500 hover:text-blue-600"
-          >
-            Create your first tournament
-          </Link>
+          {isStaff && (
+            <Link
+              to="/tournaments/create"
+              className="inline-block mt-4 text-blue-500 hover:text-blue-600"
+            >
+              Create your first tournament
+            </Link>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
