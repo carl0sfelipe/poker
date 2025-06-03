@@ -17,6 +17,8 @@ const TournamentDetail = () => {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [password, setPassword] = useState('');
   const isStaff = authService.isStaff();
+  const [selectedBonuses, setSelectedBonuses] = useState([]);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   useEffect(() => {
     loadTournament();
@@ -27,6 +29,13 @@ const TournamentDetail = () => {
       setError(null);
       const data = await tournamentService.getById(id);
       setTournament(data);
+      
+      // Check if user is registered
+      if (data.registrations) {
+        const user = authService.getUser();
+        setIsRegistered(data.registrations.some(reg => reg.user_id === user?.id));
+      }
+      
       setLoading(false);
     } catch (err) {
       console.error('Load tournament error:', err);
@@ -52,6 +61,7 @@ const TournamentDetail = () => {
       await tournamentService.register(id);
       setIsRegistered(true);
       loadTournament(); // Refresh tournament data
+      setShowConfirmDialog(false);
     } catch (err) {
       setError(err.message || 'Failed to register for tournament');
     }
@@ -126,6 +136,24 @@ const TournamentDetail = () => {
     }
   };
 
+  const handleBonusSelect = (bonusName) => {
+    setSelectedBonuses(prev => 
+      prev.includes(bonusName)
+        ? prev.filter(b => b !== bonusName)
+        : [...prev, bonusName]
+    );
+  };
+
+  const handleRebuy = async (isDouble = false) => {
+    try {
+      setError(null);
+      await tournamentService.addRebuy(id, isDouble);
+      loadTournament(); // Refresh tournament data
+    } catch (err) {
+      setError(err.message || 'Failed to process rebuy');
+    }
+  };
+
   if (loading || isDeleting) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
@@ -196,6 +224,55 @@ const TournamentDetail = () => {
                 <p className="text-gray-600">
                   Status: <span className="capitalize">{tournament.status}</span>
                 </p>
+
+                {/* Tournament Options */}
+                <div className="mt-6 space-y-6">
+                  {/* Bonus Information */}
+                  {tournament.bonuses && tournament.bonuses.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Available Bonuses</h3>
+                      <div className="space-y-2">
+                        {tournament.bonuses.map((bonus, index) => (
+                          <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                            <div className="font-medium text-gray-900">{bonus.name}</div>
+                            <div className="text-sm text-gray-600">Stack: +{bonus.stack.toLocaleString()} chips</div>
+                            <div className="text-sm text-gray-500">Condition: {bonus.condition}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Add-on Information */}
+                  {tournament.addon?.allowed && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Add-on Option</h3>
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <div className="text-sm text-gray-600">Stack: +{tournament.addon.stack.toLocaleString()} chips</div>
+                        <div className="text-sm text-gray-600">Price: ${tournament.addon.price}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Rebuy Information */}
+                  {tournament.rebuy?.allowed && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Rebuy Options</h3>
+                      <div className="space-y-2">
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <div className="font-medium text-gray-900">Single Rebuy</div>
+                          <div className="text-sm text-gray-600">Stack: +{tournament.rebuy.single.stack.toLocaleString()} chips</div>
+                          <div className="text-sm text-gray-600">Price: ${tournament.rebuy.single.price}</div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                          <div className="font-medium text-gray-900">Double Rebuy</div>
+                          <div className="text-sm text-gray-600">Stack: +{tournament.rebuy.double.stack.toLocaleString()} chips</div>
+                          <div className="text-sm text-gray-600">Price: ${tournament.rebuy.double.price}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="space-x-2">
                 {isStaff && (
@@ -222,16 +299,53 @@ const TournamentDetail = () => {
                     </button>
                   </>
                 )}
-                {!isRegistered && tournament.status === 'pending' && authService.isAuthenticated() && (
-                  <button
-                    onClick={handleRegister}
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    Register
-                  </button>
+                {tournament.status === 'pending' && authService.isAuthenticated() && (
+                  isRegistered ? (
+                    <div className="flex items-center space-x-4">
+                      <div className="px-4 py-2 bg-gray-100 text-gray-700 rounded inline-flex items-center">
+                        <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Already Registered
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowConfirmDialog(true)}
+                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Register
+                    </button>
+                  )
                 )}
               </div>
             </div>
+
+            {/* Registration confirmation dialog */}
+            {showConfirmDialog && !isRegistered && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+                  <h3 className="text-xl font-bold mb-4">Confirm Registration</h3>
+                  <p className="mb-6 text-gray-700">
+                    Are you sure you want to register for this tournament?
+                  </p>
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      onClick={() => setShowConfirmDialog(false)}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleRegister}
+                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Register
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Password confirmation dialog */}
             {showPasswordDialog && (

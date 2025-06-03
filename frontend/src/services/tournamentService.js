@@ -30,7 +30,7 @@ const tournamentService = {
 
   async getById(id) {
     try {
-      const response = await axios.get(`${API_URL}/tournaments/${id}`);
+      const response = await axios.get(`${API_URL}/tournaments/${id}?include=registrations,rebuys`);
       return response.data;
     } catch (error) {
       console.error('GetById error:', error);
@@ -49,15 +49,9 @@ const tournamentService = {
       const formattedData = {
         ...tournamentData,
         starting_stack: parseInt(tournamentData.starting_stack),
-        bonuses: tournamentData.bonuses.map(bonus => ({
-          ...bonus,
-          stack: parseInt(bonus.stack)
-        })),
-        addon: {
-          ...tournamentData.addon,
-          stack: parseInt(tournamentData.addon.stack),
-          price: parseInt(tournamentData.addon.price)
-        },
+        rebuy_max_level: tournamentData.rebuy.allowed ? parseInt(tournamentData.rebuy.max_level) : null,
+        max_stack_for_single_rebuy: tournamentData.rebuy.allowed ? parseInt(tournamentData.rebuy.max_stack_for_single) : null,
+        addon_break_level: tournamentData.addon.allowed ? parseInt(tournamentData.addon.break_level) : null,
         rebuy: {
           ...tournamentData.rebuy,
           single: {
@@ -70,6 +64,11 @@ const tournamentService = {
             stack: parseInt(tournamentData.rebuy.double.stack),
             price: parseInt(tournamentData.rebuy.double.price)
           }
+        },
+        addon: {
+          ...tournamentData.addon,
+          stack: parseInt(tournamentData.addon.stack),
+          price: parseInt(tournamentData.addon.price)
         }
       };
 
@@ -100,19 +99,48 @@ const tournamentService = {
     }
   },
 
-  async checkIn(tournamentId, userId) {
+  async performRebuy(tournamentId, userId, isDouble) {
     try {
-      const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/checkin`, { userId });
+      const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/rebuy`, {
+        userId,
+        isDouble: Boolean(isDouble)  // Ensure it's a boolean
+      });
       return response.data;
     } catch (error) {
-      console.error('CheckIn error:', error);
+      console.error('Rebuy error:', error);
       throw this._handleError(error);
     }
   },
 
-  async eliminate(tournamentId, userId) {
+  async checkIn(tournamentId, userId) {
     try {
-      const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/eliminate`, { userId });
+      const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/checkin`, {
+        userId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Check-in error:', error);
+      throw this._handleError(error);
+    }
+  },
+
+  async performAddon(tournamentId, userId) {
+    try {
+      const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/addon`, {
+        userId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Addon error:', error);
+      throw this._handleError(error);
+    }
+  },
+
+  async eliminatePlayer(tournamentId, userId) {
+    try {
+      const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/eliminate`, {
+        userId
+      });
       return response.data;
     } catch (error) {
       console.error('Eliminate error:', error);
@@ -120,87 +148,16 @@ const tournamentService = {
     }
   },
 
-  async exportResults(tournamentId) {
+  async updateTournamentLevel(tournamentId, level, blindIndex, isBreak) {
     try {
-      const response = await axios.get(`${API_URL}/tournaments/${tournamentId}/export`, {
-        responseType: 'blob'
+      const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/level`, {
+        level,
+        blindIndex,
+        isBreak
       });
       return response.data;
     } catch (error) {
-      console.error('Export error:', error);
-      throw this._handleError(error);
-    }
-  },
-
-  async delete(tournamentId, forceDelete = false, password = null) {
-    try {
-      // Log da URL que será chamada
-      const deleteUrl = `${API_URL}/tournaments/${tournamentId}/delete`;
-      console.log('Delete URL:', deleteUrl);
-
-      // Primeiro verifica se o torneio existe
-      try {
-        const tournament = await this.getById(tournamentId);
-        console.log('Tournament found:', tournament);
-      } catch (error) {
-        console.error('Pre-delete check error:', error);
-        if (error.response?.status === 404) {
-          throw new Error('Tournament not found or already deleted');
-        }
-        throw error;
-      }
-
-      // Se existe, tenta deletar
-      console.log('Attempting to delete tournament:', tournamentId);
-      const response = await axios.post(deleteUrl, {
-        forceDelete,
-        password
-      });
-      console.log('Delete response:', response);
-      
-      // Se a resposta for 204 ou 200, considera sucesso
-      if (response.status === 204 || response.status === 200) {
-        return { success: true, message: 'Tournament successfully deleted' };
-      }
-
-      throw new Error(`Unexpected response status: ${response.status}`);
-    } catch (error) {
-      console.error('Delete error:', {
-        error,
-        response: error.response,
-        data: error.response?.data,
-        status: error.response?.status,
-        url: error.config?.url
-      });
-
-      // Se o erro for 404, significa que o endpoint está errado
-      if (error.response?.status === 404) {
-        throw new Error('Delete endpoint not found. Please contact the administrator.');
-      }
-      // Se o erro for 403, significa que não tem permissão
-      if (error.response?.status === 403) {
-        throw new Error('You do not have permission to delete this tournament');
-      }
-      // Se o erro for 401, senha inválida
-      if (error.response?.status === 401) {
-        throw new Error('Invalid password. Please try again.');
-      }
-      // Se o erro for 409, significa que precisa de force delete
-      if (error.response?.status === 409) {
-        if (error.response.data?.requiresForceDelete) {
-          throw new Error('FORCE_DELETE_REQUIRED');
-        }
-        throw new Error('Cannot delete tournament that has already started or has registered players');
-      }
-      // Se o erro for de rede
-      if (error.code === 'ECONNABORTED' || !error.response) {
-        throw new Error('Network error while trying to delete tournament. Please try again.');
-      }
-      // Se for um erro da API com mensagem
-      if (error.response?.data?.message) {
-        throw new Error(`API Error: ${error.response.data.message}`);
-      }
-      // Para outros erros, usa o handler padrão
+      console.error('Update level error:', error);
       throw this._handleError(error);
     }
   },

@@ -228,12 +228,22 @@ const tournamentController = {
             *,
             user:users (
               id,
+              name,
               email
             )
           )
         `)
         .eq('id', id)
         .single();
+
+      // Process the data to include user_name in registrations
+      if (data && data.registrations) {
+        data.registrations = data.registrations.map(reg => ({
+          ...reg,
+          user_name: reg.user.name || reg.user.email.split('@')[0], // Fallback to email username if name is not set
+          user_email: reg.user.email
+        }));
+      }
 
       // Trata especificamente o erro PGRST116 (nenhuma linha encontrada)
       if (error) {
@@ -363,11 +373,15 @@ const tournamentController = {
         stack: rebuyStack
       };
 
+      // Update registration with new stack, rebuy record, and increment counter
       const { data, error } = await supabase
         .from('registrations')
         .update({ 
           current_stack: newStack,
-          rebuys: [...registration.rebuys, newRebuy]
+          rebuys: [...(registration.rebuys || []), newRebuy],
+          single_rebuys: isDouble ? (registration.single_rebuys || 0) : (registration.single_rebuys || 0) + 1,
+          double_rebuys: isDouble ? (registration.double_rebuys || 0) + 1 : (registration.double_rebuys || 0),
+          last_rebuy_level: tournament.current_level || 1
         })
         .eq('tournament_id', tournamentId)
         .eq('user_id', userId)
@@ -462,30 +476,65 @@ const tournamentController = {
       const { id: tournamentId } = req.params;
       const { userId } = req.body;
 
-      // Get current highest finish place
-      const { data: highestPlace } = await supabase
-        .from('registrations')
-        .select('finish_place')
-        .eq('tournament_id', tournamentId)
-        .order('finish_place', { ascending: false })
-        .limit(1)
-        .single();
+      console.log('Eliminating player:', { tournamentId, userId });
 
-      const nextPlace = (highestPlace?.finish_place || 0) + 1;
+      // Get total number of players and number of eliminated players
+      const { data: registrations } = await supabase
+        .from('registrations')
+        .select('eliminated, checked_in')
+        .eq('tournament_id', tournamentId);
+
+      const totalPlayers = registrations.filter(r => r.checked_in).length;
+      const eliminatedPlayers = registrations.filter(r => r.eliminated).length;
+      
+      // Calculate finish place (total players - eliminated players)
+      // This way, last player eliminated gets 2nd place, second to last gets 3rd, etc.
+      // The last remaining player will be the champion (1st place)
+      const finishPlace = totalPlayers - eliminatedPlayers;
 
       const { data, error } = await supabase
         .from('registrations')
-        .update({ finish_place: nextPlace })
+        .update({ 
+          eliminated: true,
+          finish_place: finishPlace
+        })
         .eq('tournament_id', tournamentId)
         .eq('user_id', userId)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Elimination error:', error);
+        throw error;
+      }
+      
       if (!data) {
         return res.status(404).json({ error: 'Registration not found' });
       }
 
+      // If this was the second to last player (meaning only one remains),
+      // automatically set the remaining player as the champion
+      if (finishPlace === 2) {
+        const { data: lastPlayer } = await supabase
+          .from('registrations')
+          .select('user_id')
+          .eq('tournament_id', tournamentId)
+          .eq('eliminated', false)
+          .single();
+
+        if (lastPlayer) {
+          await supabase
+            .from('registrations')
+            .update({ 
+              eliminated: true,
+              finish_place: 1  // Champion
+            })
+            .eq('tournament_id', tournamentId)
+            .eq('user_id', lastPlayer.user_id);
+        }
+      }
+
+      console.log('Player eliminated successfully:', data);
       res.json(data);
     } catch (error) {
       console.error('Eliminate player error:', error);

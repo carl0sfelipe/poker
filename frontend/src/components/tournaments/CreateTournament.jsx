@@ -14,11 +14,14 @@ const CreateTournament = () => {
     bonuses: [],
     addon: {
       allowed: false,
+      break_level: 1,
       stack: 0,
       price: 0
     },
     rebuy: {
       allowed: false,
+      max_level: 1,
+      max_stack_for_single: 0,
       single: {
         stack: 0,
         price: 0
@@ -56,10 +59,30 @@ const CreateTournament = () => {
     }
 
     try {
-      await tournamentService.create(formData);
-      navigate('/tournaments');
+      if (formData.rebuy.allowed) {
+        // Validate rebuy settings
+        if (formData.rebuy.max_level <= 0) {
+          setError('Nível máximo de rebuy deve ser maior que 0');
+          return;
+        }
+        if (formData.rebuy.max_stack_for_single <= 0) {
+          setError('Stack máximo para rebuy simples deve ser maior que 0');
+          return;
+        }
+      }
+
+      if (formData.addon.allowed) {
+        // Validate addon settings
+        if (formData.addon.break_level <= formData.rebuy.max_level) {
+          setError('Nível do intervalo de add-on deve ser maior que o nível máximo de rebuy');
+          return;
+        }
+      }
+
+      const response = await tournamentService.create(formData);
+      navigate(`/tournaments/${response.id}`);
     } catch (err) {
-      setError('Failed to create tournament');
+      setError(err.message);
     }
   };
 
@@ -150,30 +173,46 @@ const CreateTournament = () => {
     });
   };
 
-  const handleAddonToggle = (enabled) => {
+  const handleRebuyToggle = (checked) => {
     setFormData({
       ...formData,
+      rebuy: {
+        ...formData.rebuy,
+        allowed: checked,
+        max_level: checked ? 1 : 0,
+        max_stack_for_single: checked ? formData.starting_stack : 0
+      },
+      // Update addon break level to match rebuy max level
       addon: {
-        allowed: enabled,
-        stack: enabled ? formData.addon.stack : 0,
-        price: enabled ? formData.addon.price : 0
+        ...formData.addon,
+        break_level: checked ? 1 : 0
       }
     });
   };
 
-  const handleRebuyToggle = (enabled) => {
+  const handleRebuyMaxLevelChange = (value) => {
+    const level = parseInt(value);
     setFormData({
       ...formData,
       rebuy: {
-        allowed: enabled,
-        single: {
-          stack: enabled ? formData.rebuy.single.stack : 0,
-          price: enabled ? formData.rebuy.single.price : 0
-        },
-        double: {
-          stack: enabled ? formData.rebuy.double.stack : 0,
-          price: enabled ? formData.rebuy.double.price : 0
-        }
+        ...formData.rebuy,
+        max_level: level
+      },
+      // Keep addon break level in sync
+      addon: {
+        ...formData.addon,
+        break_level: level
+      }
+    });
+  };
+
+  const handleAddonToggle = (checked) => {
+    setFormData({
+      ...formData,
+      addon: {
+        ...formData.addon,
+        allowed: checked,
+        break_level: checked ? (formData.rebuy.max_level + 1) : 0
       }
     });
   };
@@ -419,50 +458,6 @@ const CreateTournament = () => {
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="text-lg font-medium mb-4">Add-on Options</h3>
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.addon.allowed}
-                  onChange={(e) => handleAddonToggle(e.target.checked)}
-                  className="mr-2"
-                />
-                <span>Enable Add-on</span>
-              </div>
-              
-              {formData.addon.allowed && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Stack Amount</label>
-                    <input
-                      type="number"
-                      value={formData.addon.stack}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        addon: { ...formData.addon, stack: parseInt(e.target.value) || 0 }
-                      })}
-                      className="mt-1 block w-full rounded-md border-gray-300"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Price</label>
-                    <input
-                      type="number"
-                      value={formData.addon.price}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        addon: { ...formData.addon, price: parseInt(e.target.value) || 0 }
-                      })}
-                      className="mt-1 block w-full rounded-md border-gray-300"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="border-t pt-6">
             <h3 className="text-lg font-medium mb-4">Rebuy Options</h3>
             <div className="space-y-4">
               <div className="flex items-center">
@@ -478,10 +473,44 @@ const CreateTournament = () => {
               {formData.rebuy.allowed && (
                 <>
                   <div>
-                    <h4 className="text-md font-medium mb-2">Single Rebuy</h4>
+                    <label className="block text-sm font-medium text-gray-700">Nível Máximo para Rebuys</label>
+                    <input
+                      type="number"
+                      value={formData.rebuy.max_level}
+                      onChange={(e) => handleRebuyMaxLevelChange(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      min="1"
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Rebuys serão permitidos até este nível do torneio
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Stack Máximo para Rebuy Simples</label>
+                    <input
+                      type="number"
+                      value={formData.rebuy.max_stack_for_single}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        rebuy: {
+                          ...formData.rebuy,
+                          max_stack_for_single: parseInt(e.target.value)
+                        }
+                      })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      min="1"
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Jogadores só podem fazer rebuy simples se tiverem menos que este valor
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="text-md font-medium mb-2">Rebuy Simples</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Stack Amount</label>
+                        <label className="block text-sm font-medium text-gray-700">Quantidade de Fichas</label>
                         <input
                           type="number"
                           value={formData.rebuy.single.stack}
@@ -489,14 +518,15 @@ const CreateTournament = () => {
                             ...formData,
                             rebuy: {
                               ...formData.rebuy,
-                              single: { ...formData.rebuy.single, stack: parseInt(e.target.value) || 0 }
+                              single: { ...formData.rebuy.single, stack: parseInt(e.target.value) }
                             }
                           })}
-                          className="mt-1 block w-full rounded-md border-gray-300"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                          min="1"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Price</label>
+                        <label className="block text-sm font-medium text-gray-700">Preço</label>
                         <input
                           type="number"
                           value={formData.rebuy.single.price}
@@ -504,20 +534,21 @@ const CreateTournament = () => {
                             ...formData,
                             rebuy: {
                               ...formData.rebuy,
-                              single: { ...formData.rebuy.single, price: parseInt(e.target.value) || 0 }
+                              single: { ...formData.rebuy.single, price: parseInt(e.target.value) }
                             }
                           })}
-                          className="mt-1 block w-full rounded-md border-gray-300"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                          min="1"
                         />
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-md font-medium mb-2">Double Rebuy</h4>
+                    <h4 className="text-md font-medium mb-2">Rebuy Duplo</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Stack Amount</label>
+                        <label className="block text-sm font-medium text-gray-700">Quantidade de Fichas</label>
                         <input
                           type="number"
                           value={formData.rebuy.double.stack}
@@ -525,14 +556,15 @@ const CreateTournament = () => {
                             ...formData,
                             rebuy: {
                               ...formData.rebuy,
-                              double: { ...formData.rebuy.double, stack: parseInt(e.target.value) || 0 }
+                              double: { ...formData.rebuy.double, stack: parseInt(e.target.value) }
                             }
                           })}
-                          className="mt-1 block w-full rounded-md border-gray-300"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                          min="1"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Price</label>
+                        <label className="block text-sm font-medium text-gray-700">Preço</label>
                         <input
                           type="number"
                           value={formData.rebuy.double.price}
@@ -540,12 +572,67 @@ const CreateTournament = () => {
                             ...formData,
                             rebuy: {
                               ...formData.rebuy,
-                              double: { ...formData.rebuy.double, price: parseInt(e.target.value) || 0 }
+                              double: { ...formData.rebuy.double, price: parseInt(e.target.value) }
                             }
                           })}
-                          className="mt-1 block w-full rounded-md border-gray-300"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                          min="1"
                         />
                       </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-medium mb-4">Add-on Options</h3>
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.addon.allowed}
+                  onChange={(e) => handleAddonToggle(e.target.checked)}
+                  className="mr-2"
+                />
+                <span>Enable Add-on</span>
+              </div>
+              
+              {formData.addon.allowed && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Quantidade de Fichas</label>
+                      <input
+                        type="number"
+                        value={formData.addon.stack}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          addon: {
+                            ...formData.addon,
+                            stack: parseInt(e.target.value)
+                          }
+                        })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                        min="1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Preço</label>
+                      <input
+                        type="number"
+                        value={formData.addon.price}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          addon: {
+                            ...formData.addon,
+                            price: parseInt(e.target.value)
+                          }
+                        })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                        min="1"
+                      />
                     </div>
                   </div>
                 </>
