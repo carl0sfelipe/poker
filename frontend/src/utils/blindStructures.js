@@ -16,8 +16,7 @@ const BLIND_STRUCTURES = {
       { level: 10, small_blind: 1000, big_blind: 2000, duration: 15 },
       { level: 11, small_blind: 1500, big_blind: 3000, duration: 15 },
       { level: 12, small_blind: 2000, big_blind: 4000, duration: 15 },
-    ]
-    levels: generateBlindLevels(15)
+    ],
   },
   
   // Para stacks de 15,000 a 25,000
@@ -38,8 +37,7 @@ const BLIND_STRUCTURES = {
       { level: 12, small_blind: 2000, big_blind: 4000, duration: 20 },
       { level: 13, small_blind: 3000, big_blind: 6000, duration: 20 },
       { level: 14, small_blind: 4000, big_blind: 8000, duration: 20 },
-    ]
-    levels: generateBlindLevels(20)
+    ],
   },
   
   // Para stacks de 25,000 ou mais
@@ -62,8 +60,7 @@ const BLIND_STRUCTURES = {
       { level: 14, small_blind: 4000, big_blind: 8000, duration: 30 },
       { level: 15, small_blind: 5000, big_blind: 10000, duration: 30 },
       { level: 16, small_blind: 6000, big_blind: 12000, duration: 30 },
-    ]
-    levels: generateBlindLevels(30)
+    ],
   }
 };
 
