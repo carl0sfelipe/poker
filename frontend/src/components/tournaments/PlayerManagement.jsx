@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import tournamentService from '../../services/tournamentService';
 import authService from '../../services/authService';
 import userService from '../../services/userService';
+import SettlementModal from './SettlementModal';
 
 const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = false }) => {
   const [players, setPlayers] = useState([]);
@@ -16,6 +17,8 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
   const [newPlayer, setNewPlayer] = useState({ name: '', email: '' });
   const [existingUsers, setExistingUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [isSettlementOpen, setIsSettlementOpen] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
   const isStaff = authService.isStaff();
 
   useEffect(() => {
@@ -114,6 +117,11 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     } catch (err) {
       setError(err.message || 'Failed to process add-on');
     }
+  };
+
+  const openSettlementModal = (player) => {
+    setSelectedPlayer(player);
+    setIsSettlementOpen(true);
   };
 
   const handleManualRegister = async () => {
@@ -344,13 +352,12 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
                           </button>
                         </>
                       )}
-                      {tournament.addon?.allowed && !player.eliminated && !player.addon_used && (
+                      {!player.eliminated && (
                         <button
-                          onClick={() => handleAddon(player.user_id)}
+                          onClick={() => openSettlementModal(player)}
                           className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-                          title={`Add ${tournament.addon.stack.toLocaleString()} chips for $${tournament.addon.price}`}
                         >
-                          Add-on
+                          Settle Up
                         </button>
                       )}
                     </div>
@@ -361,6 +368,18 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
           </tbody>
         </table>
       </div>
+      {isSettlementOpen && selectedPlayer && (
+        <SettlementModal
+          isOpen={isSettlementOpen}
+          onClose={(refresh) => {
+            setIsSettlementOpen(false);
+            setSelectedPlayer(null);
+            if (refresh) loadPlayers();
+          }}
+          player={selectedPlayer}
+          tournament={tournament}
+        />
+      )}
     </div>
   );
 };
