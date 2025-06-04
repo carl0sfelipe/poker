@@ -6,6 +6,7 @@ import TournamentLevelControl from './TournamentLevelControl';
 import TournamentStats from './TournamentStats';
 import PlayersList from './PlayersList';
 import TournamentHistory from './TournamentHistory';
+import SettleUpModal from './SettleUpModal';
 
 const TournamentDetails = () => {
   const { id } = useParams();
@@ -14,9 +15,9 @@ const TournamentDetails = () => {
   const [registration, setRegistration] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showSettleUp, setShowSettleUp] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const loadData = async () => {
       try {
         const [tournamentData, registrationData] = await Promise.all([
           tournamentService.getById(id),
@@ -29,9 +30,10 @@ const TournamentDetails = () => {
       } finally {
         setLoading(false);
       }
-    };
+  };
 
-    fetchData();
+  useEffect(() => {
+    loadData();
   }, [id, user]);
 
   const handleRebuy = async (type) => {
@@ -65,25 +67,6 @@ const TournamentDetails = () => {
     }
   };
 
-  const handleAddon = async () => {
-    try {
-      if (!registration) {
-        setError('Você precisa estar registrado para fazer add-on');
-        return;
-      }
-
-      if (tournament.current_level !== tournament.addon_break_level || !tournament.is_break) {
-        setError('Add-on só é permitido durante o intervalo específico');
-        return;
-      }
-
-      const updatedRegistration = await tournamentService.performAddon(id, user.id);
-      setRegistration(updatedRegistration);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
 
   const handleEliminatePlayer = async (playerId) => {
     try {
@@ -99,6 +82,13 @@ const TournamentDetails = () => {
 
   const handleLevelUpdate = (updatedTournament) => {
     setTournament(updatedTournament);
+  };
+
+  const handleSettleClose = async (refresh = false) => {
+    setShowSettleUp(false);
+    if (refresh) {
+      await loadData();
+    }
   };
 
   if (loading) return <div>Carregando...</div>;
@@ -188,22 +178,20 @@ const TournamentDetails = () => {
         </div>
       )}
 
-      {/* Opção de Add-on */}
-      {registration && !registration.eliminated && tournament.addon.allowed && (
+      {/* Settle Up */}
+      {registration && tournament.addon.allowed && (
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Add-on</h2>
+          <h2 className="text-xl font-semibold mb-4">Settle Up</h2>
           <div className="space-y-2">
             <p><strong>Stack:</strong> {tournament.addon.stack}</p>
             <p><strong>Preço:</strong> R$ {tournament.addon.price}</p>
-            
-            {tournament.current_level === tournament.addon_break_level && 
-             tournament.is_break && 
-             !registration.addon_done && (
+
+            {tournament.current_level === tournament.addon_break_level && tournament.is_break && (
               <button
-                onClick={handleAddon}
+                onClick={() => setShowSettleUp(true)}
                 className="mt-4 bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
               >
-                Fazer Add-on
+                Settle Up
               </button>
             )}
           </div>
@@ -218,6 +206,14 @@ const TournamentDetails = () => {
 
       {/* Histórico do Torneio */}
       <TournamentHistory tournament={tournament} />
+      {registration && (
+        <SettleUpModal
+          isOpen={showSettleUp}
+          onClose={handleSettleClose}
+          registration={registration}
+          tournament={tournament}
+        />
+      )}
     </div>
   );
 };
