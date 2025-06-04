@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import tournamentService from '../../services/tournamentService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import TournamentLevelControl from './TournamentLevelControl';
 import TournamentStats from './TournamentStats';
 import PlayersList from './PlayersList';
@@ -128,6 +128,7 @@ const TournamentDetails = () => {
   };
 
   if (loading) return <div>Carregando...</div>;
+  if (error) return <div>{error}</div>;
   if (!tournament) return <div>Torneio não encontrado</div>;
 
   return (
