@@ -156,7 +156,6 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
       </div>
 
       {/* Manual Registration */}
-
       {!registrationClosed ? (
         <div className="bg-white p-4 rounded-lg mb-6">
           <h3 className="text-lg font-medium mb-2">Add Player</h3>
@@ -190,33 +189,6 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
           Registrations are closed. A champion has been crowned.
         </div>
       )}
-      <div className="bg-white p-4 rounded-lg mb-6">
-        <h3 className="text-lg font-medium mb-2">Add Player</h3>
-        <div className="flex space-x-2">
-          <input
-            type="text"
-            placeholder="Name"
-            value={newPlayer.name}
-            onChange={(e) => setNewPlayer({ ...newPlayer, name: e.target.value })}
-            className="border rounded px-2 py-1"
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={newPlayer.email}
-            onChange={(e) =>
-              setNewPlayer({ ...newPlayer, email: e.target.value })
-            }
-            className="border rounded px-2 py-1"
-          />
-          <button
-            onClick={handleManualRegister}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Add
-          </button>
-        </div>
-      </div>
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
