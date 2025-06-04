@@ -121,6 +121,22 @@ const userController = {
       res.status(500).json({ error: 'Internal server error' });
     }
   }
+  ,
+  async list(req, res) {
+    try {
+      const { data: users, error } = await req.db
+        .from('users')
+        .select('id, name, email, role')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+
+      res.json(users);
+    } catch (error) {
+      console.error('List users error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
 };
 
 module.exports = userController; 
