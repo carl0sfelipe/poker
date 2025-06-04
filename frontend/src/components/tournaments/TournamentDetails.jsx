@@ -26,9 +26,10 @@ const TournamentDetails = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('Fetching tournament', id, 'for user', user?.id);
         const [tournamentData, registrationData] = await Promise.all([
           tournamentService.getById(id),
-          user ? tournamentService.getRegistration(id, user.id) : null
+          user?.id ? tournamentService.getRegistration(id, user.id) : null
         ]);
         setTournament(tournamentData);
         setRegistration(registrationData);
@@ -40,7 +41,7 @@ const TournamentDetails = () => {
     };
 
     fetchData();
-  }, [id, user]);
+  }, [id, user?.id]);
 
   const handleRebuy = async (type) => {
     try {
