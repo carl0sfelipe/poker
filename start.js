@@ -4,7 +4,7 @@ const execAsync = promisify(exec);
 
 async function killProcessOnPort(port) {
   try {
-    // No Linux/Mac
+    // On Linux/Mac
     const { stdout } = await execAsync(`lsof -i :${port} -t`);
     if (stdout.trim()) {
       console.log(`Processo encontrado na porta ${port}, matando...`);
