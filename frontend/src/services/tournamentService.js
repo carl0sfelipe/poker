@@ -136,17 +136,29 @@ const tournamentService = {
     }
   },
 
-  async eliminatePlayer(tournamentId, userId) {
-    try {
-      const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/eliminate`, {
-        userId
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Eliminate error:', error);
-      throw this._handleError(error);
-    }
-  },
+    async eliminatePlayer(tournamentId, userId) {
+      try {
+        const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/eliminate`, {
+          userId
+        });
+        return response.data;
+      } catch (error) {
+        console.error('Eliminate error:', error);
+        throw this._handleError(error);
+      }
+    },
+
+    async exportResults(tournamentId) {
+      try {
+        const response = await axios.get(`${API_URL}/tournaments/${tournamentId}/export`, {
+          responseType: 'blob'
+        });
+        return response.data;
+      } catch (error) {
+        console.error('Export results error:', error);
+        throw this._handleError(error);
+      }
+    },
 
   async updateTournamentLevel(tournamentId, level, blindIndex, isBreak) {
     try {
