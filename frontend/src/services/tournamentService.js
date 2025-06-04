@@ -99,6 +99,23 @@ const tournamentService = {
     }
   },
 
+  async manualRegister(tournamentId, name, email, selectedBonuses = []) {
+    try {
+      const response = await axios.post(
+        `${API_URL}/tournaments/${tournamentId}/manual-register`,
+        {
+          name,
+          email,
+          selectedBonuses
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Manual register error:', error);
+      throw this._handleError(error);
+    }
+  },
+
   async performRebuy(tournamentId, userId, isDouble) {
     try {
       const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/rebuy`, {

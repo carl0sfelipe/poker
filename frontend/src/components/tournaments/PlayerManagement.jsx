@@ -12,6 +12,7 @@ const PlayerManagement = ({ tournamentId }) => {
     totalDoubleRebuys: 0,
     totalAddons: 0
   });
+  const [newPlayer, setNewPlayer] = useState({ name: '', email: '' });
   const isStaff = authService.isStaff();
 
   useEffect(() => {
@@ -98,6 +99,22 @@ const PlayerManagement = ({ tournamentId }) => {
     }
   };
 
+  const handleManualRegister = async () => {
+    if (!newPlayer.name || !newPlayer.email) return;
+    try {
+      await tournamentService.manualRegister(
+        tournamentId,
+        newPlayer.name,
+        newPlayer.email
+      );
+      setNewPlayer({ name: '', email: '' });
+      await loadPlayers();
+      setError(null);
+    } catch (err) {
+      setError(err.message || 'Failed to register player');
+    }
+  };
+
   if (!isStaff) return null;
   if (loading) return <div className="text-center p-4">Loading players...</div>;
   if (error) return (
@@ -134,6 +151,35 @@ const PlayerManagement = ({ tournamentId }) => {
         <div className="text-center">
           <div className="text-lg font-semibold text-yellow-600">{tournamentStats.totalAddons}</div>
           <div className="text-sm text-gray-600">Total Add-ons</div>
+        </div>
+      </div>
+
+      {/* Manual Registration */}
+      <div className="bg-white p-4 rounded-lg mb-6">
+        <h3 className="text-lg font-medium mb-2">Add Player</h3>
+        <div className="flex space-x-2">
+          <input
+            type="text"
+            placeholder="Name"
+            value={newPlayer.name}
+            onChange={(e) => setNewPlayer({ ...newPlayer, name: e.target.value })}
+            className="border rounded px-2 py-1"
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={newPlayer.email}
+            onChange={(e) =>
+              setNewPlayer({ ...newPlayer, email: e.target.value })
+            }
+            className="border rounded px-2 py-1"
+          />
+          <button
+            onClick={handleManualRegister}
+            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Add
+          </button>
         </div>
       </div>
 
