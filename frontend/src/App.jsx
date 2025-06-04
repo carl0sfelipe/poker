@@ -21,16 +21,13 @@ function App() {
   const [user, setUser] = useState(authService.getUser());
 
   useEffect(() => {
-    // Atualiza o estado quando o token mudar
-    const checkAuth = () => {
+    const syncAuth = () => {
       setIsAuthenticated(authService.isAuthenticated());
       setUser(authService.getUser());
     };
-
-    // Verifica a autenticação a cada segundo
-    const interval = setInterval(checkAuth, 1000);
-
-    return () => clearInterval(interval);
+    syncAuth();
+    window.addEventListener('storage', syncAuth);
+    return () => window.removeEventListener('storage', syncAuth);
   }, []);
 
   const handleLogout = () => {
