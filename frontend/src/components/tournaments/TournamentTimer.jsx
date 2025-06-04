@@ -27,8 +27,8 @@ const TournamentTimer = ({ tournament }) => {
           level: level.level,
           startTime: startTime.toLocaleTimeString(),
           endTime: endTime.toLocaleTimeString(),
-          smallBlind: level.small_blind,
-          bigBlind: level.big_blind
+          smallBlind: level.smallBlind || level.small_blind,
+          bigBlind: level.bigBlind || level.big_blind
         });
 
         currentTime = new Date(endTime);
@@ -80,6 +80,8 @@ const TournamentTimer = ({ tournament }) => {
   };
 
   const currentBlindLevel = tournament.blind_structure[currentLevel];
+  const currentSmallBlind = currentBlindLevel.smallBlind || currentBlindLevel.small_blind;
+  const currentBigBlind = currentBlindLevel.bigBlind || currentBlindLevel.big_blind;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow mt-6">
@@ -91,7 +93,7 @@ const TournamentTimer = ({ tournament }) => {
             {formatTime(timeLeft)}
           </div>
           <div className="text-xl mb-4">
-            Level {currentBlindLevel.level}: {currentBlindLevel.small_blind}/{currentBlindLevel.big_blind}
+            Level {currentBlindLevel.level}: {currentSmallBlind}/{currentBigBlind}
           </div>
           
           <div className="flex justify-center space-x-4 mb-6">

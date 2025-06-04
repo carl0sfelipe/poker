@@ -51,6 +51,21 @@ const TournamentLevelControl = ({ tournament, onLevelUpdate }) => {
     }
   };
 
+  const getCurrentBlinds = () => {
+    if (!tournament?.blind_structure || !Array.isArray(tournament.blind_structure)) {
+      return null;
+    }
+    const currentLevel = tournament.blind_structure[tournament.current_blind_index];
+    if (!currentLevel) return null;
+    
+    return {
+      smallBlind: currentLevel.smallBlind || currentLevel.small_blind,
+      bigBlind: currentLevel.bigBlind || currentLevel.big_blind
+    };
+  };
+
+  const currentBlinds = getCurrentBlinds();
+
   return (
     <div className="bg-white shadow rounded-lg p-6">
       <h2 className="text-xl font-semibold mb-4">Controle de Níveis</h2>
@@ -65,6 +80,11 @@ const TournamentLevelControl = ({ tournament, onLevelUpdate }) => {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-lg font-medium">Nível Atual: {tournament.current_level}</p>
+            {currentBlinds && (
+              <p className="text-md text-gray-700">
+                Blinds: {currentBlinds.smallBlind}/{currentBlinds.bigBlind}
+              </p>
+            )}
             <p className="text-sm text-gray-600">
               {tournament.is_break ? 'Em Intervalo' : 'Em Andamento'}
             </p>
@@ -95,23 +115,23 @@ const TournamentLevelControl = ({ tournament, onLevelUpdate }) => {
 
         {/* Informações de Restrições */}
         <div className="mt-6 space-y-2 text-sm text-gray-600">
-          {tournament.rebuy.allowed && (
+          {tournament.rebuy?.allowed && (
             <p>
-              • Rebuys permitidos até o nível {tournament.rebuy_max_level}
-              {tournament.current_level <= tournament.rebuy_max_level && 
-               ` (${tournament.rebuy_max_level - tournament.current_level} níveis restantes)`}
+              • Rebuys permitidos até o nível {tournament.rebuy.max_level}
+              {tournament.current_level <= tournament.rebuy.max_level && 
+               ` (${tournament.rebuy.max_level - tournament.current_level} níveis restantes)`}
             </p>
           )}
           
-          {tournament.addon.allowed && (
+          {tournament.addon?.allowed && (
             <p>
-              • Add-on disponível no intervalo do nível {tournament.addon_break_level}
-              {tournament.current_level < tournament.addon_break_level && 
-               ` (em ${tournament.addon_break_level - tournament.current_level} níveis)`}
+              • Add-on disponível no intervalo do nível {tournament.addon.break_level}
+              {tournament.current_level < tournament.addon.break_level && 
+               ` (em ${tournament.addon.break_level - tournament.current_level} níveis)`}
             </p>
           )}
 
-          {tournament.current_level <= tournament.addon_break_level && (
+          {tournament.current_level <= tournament.addon?.break_level && (
             <p className="text-yellow-600">
               • Eliminações não permitidas até o final do intervalo de add-on
             </p>
