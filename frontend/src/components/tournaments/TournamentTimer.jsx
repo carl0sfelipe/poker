@@ -5,6 +5,8 @@ const TournamentTimer = ({ tournament }) => {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [levelTimes, setLevelTimes] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const levelsPerPage = 10;
 
   useEffect(() => {
     if (!tournament?.blind_structure || !Array.isArray(tournament.blind_structure)) return;
@@ -27,8 +29,8 @@ const TournamentTimer = ({ tournament }) => {
           level: level.level,
           startTime: startTime.toLocaleTimeString(),
           endTime: endTime.toLocaleTimeString(),
-          smallBlind: level.small_blind,
-          bigBlind: level.big_blind
+          smallBlind: level.smallBlind || level.small_blind,
+          bigBlind: level.bigBlind || level.big_blind
         });
 
         currentTime = new Date(endTime);
@@ -69,6 +71,12 @@ const TournamentTimer = ({ tournament }) => {
     setIsRunning(false);
   };
 
+  const totalPages = Math.ceil(levelTimes.length / levelsPerPage);
+  
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
   if (!tournament?.blind_structure || !Array.isArray(tournament.blind_structure)) {
     return <div className="text-red-600">Invalid blind structure</div>;
   }
@@ -80,6 +88,13 @@ const TournamentTimer = ({ tournament }) => {
   };
 
   const currentBlindLevel = tournament.blind_structure[currentLevel];
+  const currentSmallBlind = currentBlindLevel.smallBlind || currentBlindLevel.small_blind;
+  const currentBigBlind = currentBlindLevel.bigBlind || currentBlindLevel.big_blind;
+
+  // Calculate the levels to show for the current page
+  const startIndex = (currentPage - 1) * levelsPerPage;
+  const endIndex = startIndex + levelsPerPage;
+  const currentLevels = levelTimes.slice(startIndex, endIndex);
 
   return (
     <div className="bg-white p-6 rounded-lg shadow mt-6">
@@ -91,7 +106,7 @@ const TournamentTimer = ({ tournament }) => {
             {formatTime(timeLeft)}
           </div>
           <div className="text-xl mb-4">
-            Level {currentBlindLevel.level}: {currentBlindLevel.small_blind}/{currentBlindLevel.big_blind}
+            Level {currentBlindLevel.level}: {currentSmallBlind}/{currentBigBlind}
           </div>
           
           <div className="flex justify-center space-x-4 mb-6">
@@ -131,13 +146,13 @@ const TournamentTimer = ({ tournament }) => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {levelTimes.map((level, index) => (
+                {currentLevels.map((level, index) => (
                   <tr 
                     key={level.level}
                     className={`${
-                      index === currentLevel 
+                      level.level === currentBlindLevel.level
                         ? 'bg-blue-50 font-semibold' 
-                        : index < currentLevel 
+                        : level.level < currentBlindLevel.level
                         ? 'text-gray-400' 
                         : ''
                     }`}
@@ -149,6 +164,41 @@ const TournamentTimer = ({ tournament }) => {
                 ))}
               </tbody>
             </table>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center space-x-2 mt-4">
+                <button
+                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`px-3 py-1 rounded ${
+                      currentPage === page
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-200 hover:bg-gray-300'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                
+                <button
+                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

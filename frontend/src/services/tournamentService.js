@@ -191,6 +191,27 @@ const tournamentService = {
     }
   },
 
+  async delete(tournamentId, forceDelete = false, password = null) {
+    try {
+      const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/delete`, {
+        forceDelete,
+        password
+      });
+      
+      if (response.status === 204) {
+        return { success: true };
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Delete tournament error:', error);
+      if (error.response?.status === 409) {
+        throw new Error('FORCE_DELETE_REQUIRED');
+      }
+      throw this._handleError(error);
+    }
+  },
+
   _handleError(error) {
     console.error('API Error:', {
       error,

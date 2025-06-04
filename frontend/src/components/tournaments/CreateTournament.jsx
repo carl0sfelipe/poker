@@ -3,6 +3,53 @@ import { useNavigate } from 'react-router-dom';
 import tournamentService from '../../services/tournamentService';
 import { BLIND_STRUCTURES, getRecommendedStructure, validateBlindStructure } from '../../utils/blindStructures';
 
+// Função para arredondar para o número mais próximo que seja fácil para o dealer
+function roundToNiceNumber(number) {
+  // Para valores até 1000
+  if (number <= 100) return 100;
+  if (number <= 200) return 200;
+  if (number <= 300) return 300;
+  if (number <= 400) return 400;
+  if (number <= 500) return 500;
+  if (number <= 600) return 600;
+  if (number <= 800) return 800;
+  if (number <= 1000) return 1000;
+  
+  // Para valores até 5000
+  if (number <= 1500) return 1500;
+  if (number <= 2000) return 2000;
+  if (number <= 2500) return 2500;
+  if (number <= 3000) return 3000;
+  if (number <= 4000) return 4000;
+  if (number <= 5000) return 5000;
+  
+  // Para valores até 10000
+  if (number <= 6000) return 6000;
+  if (number <= 8000) return 8000;
+  if (number <= 10000) return 10000;
+  
+  // Para valores até 100000
+  if (number <= 15000) return 15000;
+  if (number <= 20000) return 20000;
+  if (number <= 25000) return 25000;
+  if (number <= 30000) return 30000;
+  if (number <= 40000) return 40000;
+  if (number <= 50000) return 50000;
+  if (number <= 60000) return 60000;
+  if (number <= 80000) return 80000;
+  if (number <= 100000) return 100000;
+  
+  // Para valores até 500000
+  if (number <= 150000) return 150000;
+  if (number <= 200000) return 200000;
+  if (number <= 300000) return 300000;
+  if (number <= 400000) return 400000;
+  if (number <= 500000) return 500000;
+  
+  // Para valores maiores, arredonda para o múltiplo de 100000 mais próximo
+  return Math.round(number / 100000) * 100000;
+}
+
 const CreateTournament = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -12,15 +59,14 @@ const CreateTournament = () => {
     blind_structure: getRecommendedStructure(10000).levels,
     blind_mode: 'preset', // 'preset' ou 'custom'
     bonuses: [],
+    break_level: 6, // Nível padrão para o intervalo
     addon: {
       allowed: false,
-      break_level: 1,
       stack: 0,
       price: 0
     },
     rebuy: {
       allowed: false,
-      max_level: 1,
       max_stack_for_single: 0,
       single: {
         stack: 0,
@@ -35,6 +81,8 @@ const CreateTournament = () => {
   const [error, setError] = useState(null);
   const [selectedPreset, setSelectedPreset] = useState('small');
   const [newBonus, setNewBonus] = useState({ name: '', stack: 0, condition: '' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const levelsPerPage = 10;
 
   useEffect(() => {
     if (formData.blind_mode === 'preset') {
@@ -61,20 +109,8 @@ const CreateTournament = () => {
     try {
       if (formData.rebuy.allowed) {
         // Validate rebuy settings
-        if (formData.rebuy.max_level <= 0) {
-          setError('Nível máximo de rebuy deve ser maior que 0');
-          return;
-        }
         if (formData.rebuy.max_stack_for_single <= 0) {
           setError('Stack máximo para rebuy simples deve ser maior que 0');
-          return;
-        }
-      }
-
-      if (formData.addon.allowed) {
-        // Validate addon settings
-        if (formData.addon.break_level <= formData.rebuy.max_level) {
-          setError('Nível do intervalo de add-on deve ser maior que o nível máximo de rebuy');
           return;
         }
       }
@@ -96,14 +132,17 @@ const CreateTournament = () => {
 
   const addBlindLevel = () => {
     const lastLevel = formData.blind_structure[formData.blind_structure.length - 1];
+    const newSmallBlind = Math.round(lastLevel.small_blind * 1.25);
+    const roundedSmallBlind = roundToNiceNumber(newSmallBlind);
+    
     setFormData({
       ...formData,
       blind_structure: [
         ...formData.blind_structure,
         {
           level: lastLevel.level + 1,
-          small_blind: lastLevel.small_blind * 2,
-          big_blind: lastLevel.big_blind * 2,
+          small_blind: roundedSmallBlind,
+          big_blind: roundedSmallBlind * 2,
           duration: lastLevel.duration
         }
       ]
@@ -146,22 +185,22 @@ const CreateTournament = () => {
 
     if (!validName || !validCondition || !validStack) {
       setError(
-        'Invalid bonus: ' +
-        (!validName ? 'Name must be 3+ alphanumeric characters. ' : '') +
-        (!validCondition ? 'Condition must be 5+ characters. ' : '') +
-        (!validStack ? 'Stack must be a positive number.' : '')
+        'Bônus inválido: ' +
+        (!validName ? 'Nome deve ter pelo menos 3 caracteres alfanuméricos. ' : '') +
+        (!validCondition ? 'Condição deve ter pelo menos 5 caracteres. ' : '') +
+        (!validStack ? 'Stack deve ser um número positivo.' : '')
       );
       return;
     }
 
-    setFormData({
-      ...formData,
-      bonuses: [...formData.bonuses, {
+    setFormData(prev => ({
+      ...prev,
+      bonuses: [...prev.bonuses, {
         name: newBonus.name.trim(),
         stack: parseInt(newBonus.stack),
         condition: newBonus.condition.trim()
       }]
-    });
+    }));
     setNewBonus({ name: '', stack: 0, condition: '' });
     setError(null);
   };
@@ -179,29 +218,7 @@ const CreateTournament = () => {
       rebuy: {
         ...formData.rebuy,
         allowed: checked,
-        max_level: checked ? 1 : 0,
         max_stack_for_single: checked ? formData.starting_stack : 0
-      },
-      // Update addon break level to match rebuy max level
-      addon: {
-        ...formData.addon,
-        break_level: checked ? 1 : 0
-      }
-    });
-  };
-
-  const handleRebuyMaxLevelChange = (value) => {
-    const level = parseInt(value);
-    setFormData({
-      ...formData,
-      rebuy: {
-        ...formData.rebuy,
-        max_level: level
-      },
-      // Keep addon break level in sync
-      addon: {
-        ...formData.addon,
-        break_level: level
       }
     });
   };
@@ -211,11 +228,21 @@ const CreateTournament = () => {
       ...formData,
       addon: {
         ...formData.addon,
-        allowed: checked,
-        break_level: checked ? (formData.rebuy.max_level + 1) : 0
+        allowed: checked
       }
     });
   };
+
+  const totalPages = Math.ceil(formData.blind_structure.length / levelsPerPage);
+  
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Calculate the levels to show for the current page
+  const startIndex = (currentPage - 1) * levelsPerPage;
+  const endIndex = startIndex + levelsPerPage;
+  const currentLevels = formData.blind_structure.slice(startIndex, endIndex);
 
   return (
     <div className="container mx-auto p-4 max-w-2xl">
@@ -331,8 +358,8 @@ const CreateTournament = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {formData.blind_structure.map((level, index) => (
-                    <tr key={index}>
+                  {currentLevels.map((level, index) => (
+                    <tr key={startIndex + index}>
                       <td className="px-4 py-2">{level.level}</td>
                       <td className="px-4 py-2">
                         {formData.blind_mode === 'custom' ? (
@@ -340,7 +367,7 @@ const CreateTournament = () => {
                             type="number"
                             min="1"
                             value={level.small_blind}
-                            onChange={(e) => handleNumberChange(e.target.value, 'small_blind', index)}
+                            onChange={(e) => handleNumberChange(e.target.value, 'small_blind', startIndex + index)}
                             className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                           />
                         ) : (
@@ -353,7 +380,7 @@ const CreateTournament = () => {
                             type="number"
                             min="1"
                             value={level.big_blind}
-                            onChange={(e) => handleNumberChange(e.target.value, 'big_blind', index)}
+                            onChange={(e) => handleNumberChange(e.target.value, 'big_blind', startIndex + index)}
                             className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                           />
                         ) : (
@@ -366,7 +393,7 @@ const CreateTournament = () => {
                             type="number"
                             min="1"
                             value={level.duration}
-                            onChange={(e) => handleNumberChange(e.target.value, 'duration', index)}
+                            onChange={(e) => handleNumberChange(e.target.value, 'duration', startIndex + index)}
                             className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                           />
                         ) : (
@@ -375,10 +402,10 @@ const CreateTournament = () => {
                       </td>
                       {formData.blind_mode === 'custom' && (
                         <td className="px-4 py-2">
-                          {index > 0 && (
+                          {(startIndex + index) > 0 && (
                             <button
                               type="button"
-                              onClick={() => removeBlindLevel(index)}
+                              onClick={() => removeBlindLevel(startIndex + index)}
                               className="text-red-600 hover:text-red-900"
                             >
                               Remove
@@ -390,56 +417,92 @@ const CreateTournament = () => {
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center space-x-2 mt-4">
+                  <button
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-1 rounded ${
+                        currentPage === page
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 hover:bg-gray-300'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         <div className="space-y-6 mt-8">
           <div className="border-t pt-6">
-            <h3 className="text-lg font-medium mb-4">Bonus Options</h3>
+            <h3 className="text-lg font-medium mb-4">Opções de Bônus</h3>
             <div className="grid grid-cols-1 gap-4 mb-4">
               <div className="flex gap-4">
                 <input
                   type="text"
-                  placeholder="Bonus Name"
+                  placeholder="Nome do Bônus"
                   value={newBonus.name}
                   onChange={(e) => setNewBonus({ ...newBonus, name: e.target.value })}
-                  className="flex-1 rounded-md border-gray-300"
+                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
                 <input
                   type="number"
-                  placeholder="Stack Amount"
-                  value={newBonus.stack}
+                  placeholder="Quantidade de Fichas"
+                  value={newBonus.stack || ''}
                   onChange={(e) => setNewBonus({ ...newBonus, stack: parseInt(e.target.value) || 0 })}
-                  className="w-32 rounded-md border-gray-300"
+                  className="w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  min="1"
                 />
                 <input
                   type="text"
-                  placeholder="Condition"
+                  placeholder="Condição"
                   value={newBonus.condition}
                   onChange={(e) => setNewBonus({ ...newBonus, condition: e.target.value })}
-                  className="flex-1 rounded-md border-gray-300"
+                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   onClick={handleBonusAdd}
-                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
                 >
-                  Add Bonus
+                  Adicionar Bônus
                 </button>
               </div>
             </div>
             
             {formData.bonuses.length > 0 && (
               <div className="mt-4">
-                <h4 className="text-sm font-medium mb-2">Added Bonuses:</h4>
+                <h4 className="text-sm font-medium mb-2">Bônus Adicionados:</h4>
                 <div className="space-y-2">
                   {formData.bonuses.map((bonus, index) => (
                     <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
                       <div>
                         <span className="font-medium">{bonus.name}</span>
                         <span className="mx-2">-</span>
-                        <span>{bonus.stack.toLocaleString()} chips</span>
+                        <span>{bonus.stack.toLocaleString()} fichas</span>
                         <span className="mx-2">-</span>
                         <span className="text-gray-600">{bonus.condition}</span>
                       </div>
@@ -448,7 +511,7 @@ const CreateTournament = () => {
                         onClick={() => handleBonusRemove(index)}
                         className="text-red-600 hover:text-red-800"
                       >
-                        Remove
+                        Remover
                       </button>
                     </div>
                   ))}
@@ -458,8 +521,29 @@ const CreateTournament = () => {
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="text-lg font-medium mb-4">Rebuy Options</h3>
+            <h3 className="text-lg font-medium mb-4">Configuração do Intervalo e Rebuys</h3>
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Nível do Intervalo</label>
+                <input
+                  type="number"
+                  value={formData.break_level}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    break_level: parseInt(e.target.value)
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  min="1"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Neste nível:
+                  <br />- O torneio terá um intervalo
+                  <br />- Será o último nível para fazer rebuys
+                  <br />- Jogadores poderão fazer add-on
+                  <br />- Staff fechará a conta de rebuys de cada jogador
+                </p>
+              </div>
+
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -467,25 +551,11 @@ const CreateTournament = () => {
                   onChange={(e) => handleRebuyToggle(e.target.checked)}
                   className="mr-2"
                 />
-                <span>Enable Rebuys</span>
+                <span>Permitir Rebuys (até o nível do intervalo)</span>
               </div>
               
               {formData.rebuy.allowed && (
                 <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Nível Máximo para Rebuys</label>
-                    <input
-                      type="number"
-                      value={formData.rebuy.max_level}
-                      onChange={(e) => handleRebuyMaxLevelChange(e.target.value)}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                      min="1"
-                    />
-                    <p className="mt-1 text-sm text-gray-500">
-                      Rebuys serão permitidos até este nível do torneio
-                    </p>
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Stack Máximo para Rebuy Simples</label>
                     <input
@@ -587,7 +657,7 @@ const CreateTournament = () => {
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="text-lg font-medium mb-4">Add-on Options</h3>
+            <h3 className="text-lg font-medium mb-4">Add-on (disponível durante o intervalo)</h3>
             <div className="space-y-4">
               <div className="flex items-center">
                 <input
@@ -596,46 +666,44 @@ const CreateTournament = () => {
                   onChange={(e) => handleAddonToggle(e.target.checked)}
                   className="mr-2"
                 />
-                <span>Enable Add-on</span>
+                <span>Permitir Add-on durante o intervalo</span>
               </div>
               
               {formData.addon.allowed && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Quantidade de Fichas</label>
-                      <input
-                        type="number"
-                        value={formData.addon.stack}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          addon: {
-                            ...formData.addon,
-                            stack: parseInt(e.target.value)
-                          }
-                        })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                        min="1"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Preço</label>
-                      <input
-                        type="number"
-                        value={formData.addon.price}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          addon: {
-                            ...formData.addon,
-                            price: parseInt(e.target.value)
-                          }
-                        })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                        min="1"
-                      />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Quantidade de Fichas</label>
+                    <input
+                      type="number"
+                      value={formData.addon.stack}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        addon: {
+                          ...formData.addon,
+                          stack: parseInt(e.target.value)
+                        }
+                      })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      min="1"
+                    />
                   </div>
-                </>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Preço</label>
+                    <input
+                      type="number"
+                      value={formData.addon.price}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        addon: {
+                          ...formData.addon,
+                          price: parseInt(e.target.value)
+                        }
+                      })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      min="1"
+                    />
+                  </div>
+                </div>
               )}
             </div>
           </div>
