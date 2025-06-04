@@ -59,15 +59,14 @@ const CreateTournament = () => {
     blind_structure: getRecommendedStructure(10000).levels,
     blind_mode: 'preset', // 'preset' ou 'custom'
     bonuses: [],
+    break_level: 6, // Nível padrão para o intervalo
     addon: {
       allowed: false,
-      break_level: 1,
       stack: 0,
       price: 0
     },
     rebuy: {
       allowed: false,
-      max_level: 1,
       max_stack_for_single: 0,
       single: {
         stack: 0,
@@ -110,20 +109,8 @@ const CreateTournament = () => {
     try {
       if (formData.rebuy.allowed) {
         // Validate rebuy settings
-        if (formData.rebuy.max_level <= 0) {
-          setError('Nível máximo de rebuy deve ser maior que 0');
-          return;
-        }
         if (formData.rebuy.max_stack_for_single <= 0) {
           setError('Stack máximo para rebuy simples deve ser maior que 0');
-          return;
-        }
-      }
-
-      if (formData.addon.allowed) {
-        // Validate addon settings
-        if (formData.addon.break_level <= formData.rebuy.max_level) {
-          setError('Nível do intervalo de add-on deve ser maior que o nível máximo de rebuy');
           return;
         }
       }
@@ -198,22 +185,22 @@ const CreateTournament = () => {
 
     if (!validName || !validCondition || !validStack) {
       setError(
-        'Invalid bonus: ' +
-        (!validName ? 'Name must be 3+ alphanumeric characters. ' : '') +
-        (!validCondition ? 'Condition must be 5+ characters. ' : '') +
-        (!validStack ? 'Stack must be a positive number.' : '')
+        'Bônus inválido: ' +
+        (!validName ? 'Nome deve ter pelo menos 3 caracteres alfanuméricos. ' : '') +
+        (!validCondition ? 'Condição deve ter pelo menos 5 caracteres. ' : '') +
+        (!validStack ? 'Stack deve ser um número positivo.' : '')
       );
       return;
     }
 
-    setFormData({
-      ...formData,
-      bonuses: [...formData.bonuses, {
+    setFormData(prev => ({
+      ...prev,
+      bonuses: [...prev.bonuses, {
         name: newBonus.name.trim(),
         stack: parseInt(newBonus.stack),
         condition: newBonus.condition.trim()
       }]
-    });
+    }));
     setNewBonus({ name: '', stack: 0, condition: '' });
     setError(null);
   };
@@ -231,29 +218,7 @@ const CreateTournament = () => {
       rebuy: {
         ...formData.rebuy,
         allowed: checked,
-        max_level: checked ? 1 : 0,
         max_stack_for_single: checked ? formData.starting_stack : 0
-      },
-      // Update addon break level to match rebuy max level
-      addon: {
-        ...formData.addon,
-        break_level: checked ? 1 : 0
-      }
-    });
-  };
-
-  const handleRebuyMaxLevelChange = (value) => {
-    const level = parseInt(value);
-    setFormData({
-      ...formData,
-      rebuy: {
-        ...formData.rebuy,
-        max_level: level
-      },
-      // Keep addon break level in sync
-      addon: {
-        ...formData.addon,
-        break_level: level
       }
     });
   };
@@ -263,8 +228,7 @@ const CreateTournament = () => {
       ...formData,
       addon: {
         ...formData.addon,
-        allowed: checked,
-        break_level: checked ? (formData.rebuy.max_level + 1) : 0
+        allowed: checked
       }
     });
   };
@@ -494,50 +458,51 @@ const CreateTournament = () => {
 
         <div className="space-y-6 mt-8">
           <div className="border-t pt-6">
-            <h3 className="text-lg font-medium mb-4">Bonus Options</h3>
+            <h3 className="text-lg font-medium mb-4">Opções de Bônus</h3>
             <div className="grid grid-cols-1 gap-4 mb-4">
               <div className="flex gap-4">
                 <input
                   type="text"
-                  placeholder="Bonus Name"
+                  placeholder="Nome do Bônus"
                   value={newBonus.name}
                   onChange={(e) => setNewBonus({ ...newBonus, name: e.target.value })}
-                  className="flex-1 rounded-md border-gray-300"
+                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
                 <input
                   type="number"
-                  placeholder="Stack Amount"
-                  value={newBonus.stack}
+                  placeholder="Quantidade de Fichas"
+                  value={newBonus.stack || ''}
                   onChange={(e) => setNewBonus({ ...newBonus, stack: parseInt(e.target.value) || 0 })}
-                  className="w-32 rounded-md border-gray-300"
+                  className="w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  min="1"
                 />
                 <input
                   type="text"
-                  placeholder="Condition"
+                  placeholder="Condição"
                   value={newBonus.condition}
                   onChange={(e) => setNewBonus({ ...newBonus, condition: e.target.value })}
-                  className="flex-1 rounded-md border-gray-300"
+                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   onClick={handleBonusAdd}
-                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
                 >
-                  Add Bonus
+                  Adicionar Bônus
                 </button>
               </div>
             </div>
             
             {formData.bonuses.length > 0 && (
               <div className="mt-4">
-                <h4 className="text-sm font-medium mb-2">Added Bonuses:</h4>
+                <h4 className="text-sm font-medium mb-2">Bônus Adicionados:</h4>
                 <div className="space-y-2">
                   {formData.bonuses.map((bonus, index) => (
                     <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
                       <div>
                         <span className="font-medium">{bonus.name}</span>
                         <span className="mx-2">-</span>
-                        <span>{bonus.stack.toLocaleString()} chips</span>
+                        <span>{bonus.stack.toLocaleString()} fichas</span>
                         <span className="mx-2">-</span>
                         <span className="text-gray-600">{bonus.condition}</span>
                       </div>
@@ -546,7 +511,7 @@ const CreateTournament = () => {
                         onClick={() => handleBonusRemove(index)}
                         className="text-red-600 hover:text-red-800"
                       >
-                        Remove
+                        Remover
                       </button>
                     </div>
                   ))}
@@ -556,8 +521,29 @@ const CreateTournament = () => {
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="text-lg font-medium mb-4">Rebuy Options</h3>
+            <h3 className="text-lg font-medium mb-4">Configuração do Intervalo e Rebuys</h3>
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Nível do Intervalo</label>
+                <input
+                  type="number"
+                  value={formData.break_level}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    break_level: parseInt(e.target.value)
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                  min="1"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Neste nível:
+                  <br />- O torneio terá um intervalo
+                  <br />- Será o último nível para fazer rebuys
+                  <br />- Jogadores poderão fazer add-on
+                  <br />- Staff fechará a conta de rebuys de cada jogador
+                </p>
+              </div>
+
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -565,25 +551,11 @@ const CreateTournament = () => {
                   onChange={(e) => handleRebuyToggle(e.target.checked)}
                   className="mr-2"
                 />
-                <span>Enable Rebuys</span>
+                <span>Permitir Rebuys (até o nível do intervalo)</span>
               </div>
               
               {formData.rebuy.allowed && (
                 <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Nível Máximo para Rebuys</label>
-                    <input
-                      type="number"
-                      value={formData.rebuy.max_level}
-                      onChange={(e) => handleRebuyMaxLevelChange(e.target.value)}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                      min="1"
-                    />
-                    <p className="mt-1 text-sm text-gray-500">
-                      Rebuys serão permitidos até este nível do torneio
-                    </p>
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Stack Máximo para Rebuy Simples</label>
                     <input
@@ -685,7 +657,7 @@ const CreateTournament = () => {
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="text-lg font-medium mb-4">Add-on Options</h3>
+            <h3 className="text-lg font-medium mb-4">Add-on (disponível durante o intervalo)</h3>
             <div className="space-y-4">
               <div className="flex items-center">
                 <input
@@ -694,46 +666,44 @@ const CreateTournament = () => {
                   onChange={(e) => handleAddonToggle(e.target.checked)}
                   className="mr-2"
                 />
-                <span>Enable Add-on</span>
+                <span>Permitir Add-on durante o intervalo</span>
               </div>
               
               {formData.addon.allowed && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Quantidade de Fichas</label>
-                      <input
-                        type="number"
-                        value={formData.addon.stack}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          addon: {
-                            ...formData.addon,
-                            stack: parseInt(e.target.value)
-                          }
-                        })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                        min="1"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Preço</label>
-                      <input
-                        type="number"
-                        value={formData.addon.price}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          addon: {
-                            ...formData.addon,
-                            price: parseInt(e.target.value)
-                          }
-                        })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                        min="1"
-                      />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Quantidade de Fichas</label>
+                    <input
+                      type="number"
+                      value={formData.addon.stack}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        addon: {
+                          ...formData.addon,
+                          stack: parseInt(e.target.value)
+                        }
+                      })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      min="1"
+                    />
                   </div>
-                </>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Preço</label>
+                    <input
+                      type="number"
+                      value={formData.addon.price}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        addon: {
+                          ...formData.addon,
+                          price: parseInt(e.target.value)
+                        }
+                      })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                      min="1"
+                    />
+                  </div>
+                </div>
               )}
             </div>
           </div>
