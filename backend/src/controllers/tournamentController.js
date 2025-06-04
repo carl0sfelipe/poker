@@ -270,6 +270,18 @@ const tournamentController = {
       const userId = req.user.id;
       const { selectedBonuses = [] } = req.body;
 
+      // Do not allow new registrations if a champion already exists
+      const { data: champion } = await supabase
+        .from('registrations')
+        .select('id')
+        .eq('tournament_id', tournamentId)
+        .eq('finish_place', 1)
+        .single();
+
+      if (champion) {
+        return res.status(400).json({ error: 'Tournament already has a champion' });
+      }
+
       // Check if already registered
       const { data: existingRegistration } = await supabase
         .from('registrations')
@@ -340,6 +352,18 @@ const tournamentController = {
     try {
       const { id: tournamentId } = req.params;
       const { name, email, selectedBonuses = [] } = req.body;
+
+      // Do not allow new registrations if a champion already exists
+      const { data: champion } = await supabase
+        .from('registrations')
+        .select('id')
+        .eq('tournament_id', tournamentId)
+        .eq('finish_place', 1)
+        .single();
+
+      if (champion) {
+        return res.status(400).json({ error: 'Tournament already has a champion' });
+      }
 
       if (!name || !email) {
         return res.status(400).json({ error: 'Name and email are required' });

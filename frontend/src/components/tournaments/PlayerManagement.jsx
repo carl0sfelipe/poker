@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import tournamentService from '../../services/tournamentService';
 import authService from '../../services/authService';
 
-const PlayerManagement = ({ tournamentId }) => {
+const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = false }) => {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,7 +22,7 @@ const PlayerManagement = ({ tournamentId }) => {
       return;
     }
     loadPlayers();
-  }, [tournamentId, isStaff]);
+  }, [tournamentId, isStaff, refreshKey]);
 
   const calculateTournamentStats = (registrations) => {
     const stats = {
@@ -100,6 +100,7 @@ const PlayerManagement = ({ tournamentId }) => {
   };
 
   const handleManualRegister = async () => {
+    if (registrationClosed) return;
     if (!newPlayer.name || !newPlayer.email) return;
     try {
       await tournamentService.manualRegister(
@@ -155,6 +156,40 @@ const PlayerManagement = ({ tournamentId }) => {
       </div>
 
       {/* Manual Registration */}
+
+      {!registrationClosed ? (
+        <div className="bg-white p-4 rounded-lg mb-6">
+          <h3 className="text-lg font-medium mb-2">Add Player</h3>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              placeholder="Name"
+              value={newPlayer.name}
+              onChange={(e) => setNewPlayer({ ...newPlayer, name: e.target.value })}
+              className="border rounded px-2 py-1"
+            />
+            <input
+              type="email"
+              placeholder="Email"
+              value={newPlayer.email}
+              onChange={(e) =>
+                setNewPlayer({ ...newPlayer, email: e.target.value })
+              }
+              className="border rounded px-2 py-1"
+            />
+            <button
+              onClick={handleManualRegister}
+              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-6">
+          Registrations are closed. A champion has been crowned.
+        </div>
+      )}
       <div className="bg-white p-4 rounded-lg mb-6">
         <h3 className="text-lg font-medium mb-2">Add Player</h3>
         <div className="flex space-x-2">
