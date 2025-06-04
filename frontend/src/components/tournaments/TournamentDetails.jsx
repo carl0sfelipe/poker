@@ -47,12 +47,12 @@ const TournamentDetails = () => {
         return;
       }
 
-      if (type === 'single' && registration.stack_at_rebuy >= tournament.max_stack_for_single_rebuy) {
+      if (type === 'single' && registration.current_stack >= tournament.max_stack_for_single_rebuy) {
         setError('Seu stack atual é muito alto para rebuy simples');
         return;
       }
 
-      if (type === 'double' && registration.stack_at_rebuy > 0) {
+      if (type === 'double' && registration.current_stack > 0) {
         setError('Rebuy duplo só é permitido quando você está sem fichas');
         return;
       }
@@ -132,7 +132,7 @@ const TournamentDetails = () => {
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Seu Status</h2>
           <div className="space-y-2">
-            <p><strong>Stack Atual:</strong> {registration.stack_at_rebuy}</p>
+            <p><strong>Stack Atual:</strong> {registration.current_stack}</p>
             <p><strong>Rebuys Simples:</strong> {registration.single_rebuys}</p>
             <p><strong>Rebuys Duplos:</strong> {registration.double_rebuys}</p>
             <p><strong>Add-on Realizado:</strong> {registration.addon_done ? 'Sim' : 'Não'}</p>
@@ -164,7 +164,7 @@ const TournamentDetails = () => {
                   <button
                     onClick={() => handleRebuy('single')}
                     className="mt-2 bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600"
-                    disabled={registration.stack_at_rebuy >= tournament.max_stack_for_single_rebuy}
+                    disabled={registration.current_stack >= tournament.max_stack_for_single_rebuy}
                   >
                     Fazer Rebuy Simples
                   </button>
@@ -177,7 +177,7 @@ const TournamentDetails = () => {
                   <button
                     onClick={() => handleRebuy('double')}
                     className="mt-2 bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600"
-                    disabled={registration.stack_at_rebuy > 0}
+                    disabled={registration.current_stack > 0}
                   >
                     Fazer Rebuy Duplo
                   </button>

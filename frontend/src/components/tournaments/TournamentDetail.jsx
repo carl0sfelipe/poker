@@ -19,6 +19,8 @@ const TournamentDetail = () => {
   const isStaff = authService.isStaff();
   const [selectedBonuses, setSelectedBonuses] = useState([]);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [hasChampion, setHasChampion] = useState(false);
+  const [playerRefreshKey, setPlayerRefreshKey] = useState(0);
 
   useEffect(() => {
     loadTournament();
@@ -29,6 +31,10 @@ const TournamentDetail = () => {
       setError(null);
       const data = await tournamentService.getById(id);
       setTournament(data);
+
+      setHasChampion(
+        data.registrations?.some(reg => reg.finish_place === 1) || false
+      );
       
       // Check if user is registered
       if (data.registrations) {
@@ -60,7 +66,8 @@ const TournamentDetail = () => {
       setError(null);
       await tournamentService.register(id);
       setIsRegistered(true);
-      loadTournament(); // Refresh tournament data
+      await loadTournament(); // Refresh tournament data
+      setPlayerRefreshKey(prev => prev + 1);
       setShowConfirmDialog(false);
     } catch (err) {
       setError(err.message || 'Failed to register for tournament');
@@ -299,7 +306,7 @@ const TournamentDetail = () => {
                     </button>
                   </>
                 )}
-                {tournament.status === 'pending' && authService.isAuthenticated() && (
+                {tournament.status === 'pending' && !hasChampion && authService.isAuthenticated() && (
                   isRegistered ? (
                     <div className="flex items-center space-x-4">
                       <div className="px-4 py-2 bg-gray-100 text-gray-700 rounded inline-flex items-center">
@@ -322,7 +329,7 @@ const TournamentDetail = () => {
             </div>
 
             {/* Registration confirmation dialog */}
-            {showConfirmDialog && !isRegistered && (
+            {showConfirmDialog && !isRegistered && !hasChampion && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                 <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
                   <h3 className="text-xl font-bold mb-4">Confirm Registration</h3>
@@ -388,7 +395,13 @@ const TournamentDetail = () => {
               </div>
             )}
 
-            {isStaff && <PlayerManagement tournamentId={id} />}
+            {isStaff && (
+              <PlayerManagement
+                tournamentId={id}
+                refreshKey={playerRefreshKey}
+                registrationClosed={hasChampion}
+              />
+            )}
             
             <TournamentTimer tournament={tournament} />
           </>
