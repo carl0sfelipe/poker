@@ -10,6 +10,12 @@ router.get('/:id', tournamentController.getById);
 // Protected routes
 router.post('/', auth, checkRole(['admin', 'staff']), tournamentController.create);
 router.post('/:id/register', auth, tournamentController.register);
+router.post(
+  '/:id/manual-register',
+  auth,
+  checkRole(['admin', 'staff']),
+  tournamentController.manualRegister
+);
 router.post('/:id/checkin', auth, checkRole(['admin', 'staff']), tournamentController.checkIn);
 router.post('/:id/eliminate', auth, checkRole(['admin', 'staff']), tournamentController.eliminate);
 router.get('/:id/export', auth, checkRole(['admin', 'staff']), tournamentController.exportResults);

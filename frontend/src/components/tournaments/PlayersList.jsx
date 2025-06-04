@@ -11,7 +11,7 @@ const PlayersList = ({ tournament, onEliminatePlayer }) => {
     return [...players].sort((a, b) => {
       switch (sortBy) {
         case 'stack':
-          return b.stack_at_rebuy - a.stack_at_rebuy;
+          return b.current_stack - a.current_stack;
         case 'rebuys':
           return (b.single_rebuys + b.double_rebuys) - (a.single_rebuys + a.double_rebuys);
         case 'elimination':
@@ -97,7 +97,7 @@ const PlayersList = ({ tournament, onEliminatePlayer }) => {
                   )}
                 </td>
                 <td className="px-4 py-2 text-right">
-                  {player.eliminated ? '-' : player.stack_at_rebuy}
+                  {player.eliminated ? '-' : player.current_stack}
                 </td>
                 <td className="px-4 py-2 text-right">
                   <div>S: {player.single_rebuys || 0}</div>
