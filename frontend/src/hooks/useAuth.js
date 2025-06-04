@@ -5,9 +5,9 @@ export const useAuth = () => {
   const [user, setUser] = useState(authService.getUser());
 
   useEffect(() => {
-    const check = () => setUser(authService.getUser());
-    const id = setInterval(check, 1000);
-    return () => clearInterval(id);
+    const update = () => setUser(authService.getUser());
+    window.addEventListener('storage', update);
+    return () => window.removeEventListener('storage', update);
   }, []);
 
   return { user };
