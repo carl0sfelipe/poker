@@ -3,6 +3,53 @@ import { useNavigate } from 'react-router-dom';
 import tournamentService from '../../services/tournamentService';
 import { BLIND_STRUCTURES, getRecommendedStructure, validateBlindStructure } from '../../utils/blindStructures';
 
+// Função para arredondar para o número mais próximo que seja fácil para o dealer
+function roundToNiceNumber(number) {
+  // Para valores até 1000
+  if (number <= 100) return 100;
+  if (number <= 200) return 200;
+  if (number <= 300) return 300;
+  if (number <= 400) return 400;
+  if (number <= 500) return 500;
+  if (number <= 600) return 600;
+  if (number <= 800) return 800;
+  if (number <= 1000) return 1000;
+  
+  // Para valores até 5000
+  if (number <= 1500) return 1500;
+  if (number <= 2000) return 2000;
+  if (number <= 2500) return 2500;
+  if (number <= 3000) return 3000;
+  if (number <= 4000) return 4000;
+  if (number <= 5000) return 5000;
+  
+  // Para valores até 10000
+  if (number <= 6000) return 6000;
+  if (number <= 8000) return 8000;
+  if (number <= 10000) return 10000;
+  
+  // Para valores até 100000
+  if (number <= 15000) return 15000;
+  if (number <= 20000) return 20000;
+  if (number <= 25000) return 25000;
+  if (number <= 30000) return 30000;
+  if (number <= 40000) return 40000;
+  if (number <= 50000) return 50000;
+  if (number <= 60000) return 60000;
+  if (number <= 80000) return 80000;
+  if (number <= 100000) return 100000;
+  
+  // Para valores até 500000
+  if (number <= 150000) return 150000;
+  if (number <= 200000) return 200000;
+  if (number <= 300000) return 300000;
+  if (number <= 400000) return 400000;
+  if (number <= 500000) return 500000;
+  
+  // Para valores maiores, arredonda para o múltiplo de 100000 mais próximo
+  return Math.round(number / 100000) * 100000;
+}
+
 const CreateTournament = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -35,6 +82,8 @@ const CreateTournament = () => {
   const [error, setError] = useState(null);
   const [selectedPreset, setSelectedPreset] = useState('small');
   const [newBonus, setNewBonus] = useState({ name: '', stack: 0, condition: '' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const levelsPerPage = 10;
 
   useEffect(() => {
     if (formData.blind_mode === 'preset') {
@@ -96,14 +145,17 @@ const CreateTournament = () => {
 
   const addBlindLevel = () => {
     const lastLevel = formData.blind_structure[formData.blind_structure.length - 1];
+    const newSmallBlind = Math.round(lastLevel.small_blind * 1.25);
+    const roundedSmallBlind = roundToNiceNumber(newSmallBlind);
+    
     setFormData({
       ...formData,
       blind_structure: [
         ...formData.blind_structure,
         {
           level: lastLevel.level + 1,
-          small_blind: lastLevel.small_blind * 2,
-          big_blind: lastLevel.big_blind * 2,
+          small_blind: roundedSmallBlind,
+          big_blind: roundedSmallBlind * 2,
           duration: lastLevel.duration
         }
       ]
@@ -216,6 +268,17 @@ const CreateTournament = () => {
       }
     });
   };
+
+  const totalPages = Math.ceil(formData.blind_structure.length / levelsPerPage);
+  
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Calculate the levels to show for the current page
+  const startIndex = (currentPage - 1) * levelsPerPage;
+  const endIndex = startIndex + levelsPerPage;
+  const currentLevels = formData.blind_structure.slice(startIndex, endIndex);
 
   return (
     <div className="container mx-auto p-4 max-w-2xl">
@@ -331,8 +394,8 @@ const CreateTournament = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {formData.blind_structure.map((level, index) => (
-                    <tr key={index}>
+                  {currentLevels.map((level, index) => (
+                    <tr key={startIndex + index}>
                       <td className="px-4 py-2">{level.level}</td>
                       <td className="px-4 py-2">
                         {formData.blind_mode === 'custom' ? (
@@ -340,7 +403,7 @@ const CreateTournament = () => {
                             type="number"
                             min="1"
                             value={level.small_blind}
-                            onChange={(e) => handleNumberChange(e.target.value, 'small_blind', index)}
+                            onChange={(e) => handleNumberChange(e.target.value, 'small_blind', startIndex + index)}
                             className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                           />
                         ) : (
@@ -353,7 +416,7 @@ const CreateTournament = () => {
                             type="number"
                             min="1"
                             value={level.big_blind}
-                            onChange={(e) => handleNumberChange(e.target.value, 'big_blind', index)}
+                            onChange={(e) => handleNumberChange(e.target.value, 'big_blind', startIndex + index)}
                             className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                           />
                         ) : (
@@ -366,7 +429,7 @@ const CreateTournament = () => {
                             type="number"
                             min="1"
                             value={level.duration}
-                            onChange={(e) => handleNumberChange(e.target.value, 'duration', index)}
+                            onChange={(e) => handleNumberChange(e.target.value, 'duration', startIndex + index)}
                             className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                           />
                         ) : (
@@ -375,10 +438,10 @@ const CreateTournament = () => {
                       </td>
                       {formData.blind_mode === 'custom' && (
                         <td className="px-4 py-2">
-                          {index > 0 && (
+                          {(startIndex + index) > 0 && (
                             <button
                               type="button"
-                              onClick={() => removeBlindLevel(index)}
+                              onClick={() => removeBlindLevel(startIndex + index)}
                               className="text-red-600 hover:text-red-900"
                             >
                               Remove
@@ -390,6 +453,41 @@ const CreateTournament = () => {
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center space-x-2 mt-4">
+                  <button
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-1 rounded ${
+                        currentPage === page
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 hover:bg-gray-300'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
