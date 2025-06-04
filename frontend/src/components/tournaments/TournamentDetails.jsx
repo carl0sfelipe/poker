@@ -14,6 +14,14 @@ const TournamentDetails = () => {
   const [registration, setRegistration] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showSettlement, setShowSettlement] = useState(false);
+  const [includeAddon, setIncludeAddon] = useState(false);
+
+  const singleRebuyPrice = tournament?.rebuy?.single?.price || 0;
+  const doubleRebuyPrice = tournament?.rebuy?.double?.price || 0;
+  const rebuysDue =
+    (registration?.single_rebuys || 0) * singleRebuyPrice +
+    (registration?.double_rebuys || 0) * doubleRebuyPrice;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -47,12 +55,12 @@ const TournamentDetails = () => {
         return;
       }
 
-      if (type === 'single' && registration.stack_at_rebuy >= tournament.max_stack_for_single_rebuy) {
+      if (type === 'single' && registration.current_stack >= tournament.max_stack_for_single_rebuy) {
         setError('Seu stack atual é muito alto para rebuy simples');
         return;
       }
 
-      if (type === 'double' && registration.stack_at_rebuy > 0) {
+      if (type === 'double' && registration.current_stack > 0) {
         setError('Rebuy duplo só é permitido quando você está sem fichas');
         return;
       }
@@ -79,6 +87,24 @@ const TournamentDetails = () => {
 
       const updatedRegistration = await tournamentService.performAddon(id, user.id);
       setRegistration(updatedRegistration);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const openSettlement = () => {
+    setIncludeAddon(false);
+    setShowSettlement(true);
+  };
+
+  const confirmSettlement = async () => {
+    try {
+      if (includeAddon && tournament.addon.allowed && !registration.addon_used) {
+        const updated = await tournamentService.performAddon(id, user.id);
+        setRegistration(updated);
+      }
+      setShowSettlement(false);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -132,10 +158,10 @@ const TournamentDetails = () => {
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Seu Status</h2>
           <div className="space-y-2">
-            <p><strong>Stack Atual:</strong> {registration.stack_at_rebuy}</p>
+            <p><strong>Stack Atual:</strong> {registration.current_stack}</p>
             <p><strong>Rebuys Simples:</strong> {registration.single_rebuys}</p>
             <p><strong>Rebuys Duplos:</strong> {registration.double_rebuys}</p>
-            <p><strong>Add-on Realizado:</strong> {registration.addon_done ? 'Sim' : 'Não'}</p>
+            <p><strong>Add-on Realizado:</strong> {registration.addon_used ? 'Sim' : 'Não'}</p>
             <p><strong>Status:</strong> {registration.eliminated ? 'Eliminado' : 'Ativo'}</p>
             
             {!registration.eliminated && tournament.current_level > tournament.addon_break_level && (
@@ -164,7 +190,7 @@ const TournamentDetails = () => {
                   <button
                     onClick={() => handleRebuy('single')}
                     className="mt-2 bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600"
-                    disabled={registration.stack_at_rebuy >= tournament.max_stack_for_single_rebuy}
+                    disabled={registration.current_stack >= tournament.max_stack_for_single_rebuy}
                   >
                     Fazer Rebuy Simples
                   </button>
@@ -177,7 +203,7 @@ const TournamentDetails = () => {
                   <button
                     onClick={() => handleRebuy('double')}
                     className="mt-2 bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600"
-                    disabled={registration.stack_at_rebuy > 0}
+                    disabled={registration.current_stack > 0}
                   >
                     Fazer Rebuy Duplo
                   </button>
@@ -188,25 +214,16 @@ const TournamentDetails = () => {
         </div>
       )}
 
-      {/* Opção de Add-on */}
-      {registration && !registration.eliminated && tournament.addon.allowed && (
+      {/* Settlement */}
+      {registration && !registration.eliminated && (
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Add-on</h2>
-          <div className="space-y-2">
-            <p><strong>Stack:</strong> {tournament.addon.stack}</p>
-            <p><strong>Preço:</strong> R$ {tournament.addon.price}</p>
-            
-            {tournament.current_level === tournament.addon_break_level && 
-             tournament.is_break && 
-             !registration.addon_done && (
-              <button
-                onClick={handleAddon}
-                className="mt-4 bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
-              >
-                Fazer Add-on
-              </button>
-            )}
-          </div>
+          <h2 className="text-xl font-semibold mb-4">Settle Up</h2>
+          <button
+            onClick={openSettlement}
+            className="mt-2 bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
+          >
+            Settle Up
+          </button>
         </div>
       )}
 
@@ -218,6 +235,42 @@ const TournamentDetails = () => {
 
       {/* Histórico do Torneio */}
       <TournamentHistory tournament={tournament} />
+
+      {showSettlement && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">Settle Up</h3>
+            <p className="mb-2 text-gray-700">Rebuys Due: R$ {rebuysDue}</p>
+            {tournament.addon.allowed && !registration.addon_used && (
+              <label className="flex items-center space-x-2 mb-2">
+                <input
+                  type="checkbox"
+                  checked={includeAddon}
+                  onChange={(e) => setIncludeAddon(e.target.checked)}
+                />
+                <span>Add-on for R$ {tournament.addon.price} (+{tournament.addon.stack} chips)</span>
+              </label>
+            )}
+            <p className="mb-6 font-semibold">
+              Total: R$ {rebuysDue + (includeAddon ? tournament.addon.price : 0)}
+            </p>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setShowSettlement(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmSettlement}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

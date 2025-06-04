@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import tournamentService from '../../services/tournamentService';
 import authService from '../../services/authService';
 
-const PlayerManagement = ({ tournamentId }) => {
+const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = false }) => {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,6 +12,7 @@ const PlayerManagement = ({ tournamentId }) => {
     totalDoubleRebuys: 0,
     totalAddons: 0
   });
+  const [newPlayer, setNewPlayer] = useState({ name: '', email: '' });
   const isStaff = authService.isStaff();
 
   useEffect(() => {
@@ -21,7 +22,7 @@ const PlayerManagement = ({ tournamentId }) => {
       return;
     }
     loadPlayers();
-  }, [tournamentId, isStaff]);
+  }, [tournamentId, isStaff, refreshKey]);
 
   const calculateTournamentStats = (registrations) => {
     const stats = {
@@ -98,6 +99,23 @@ const PlayerManagement = ({ tournamentId }) => {
     }
   };
 
+  const handleManualRegister = async () => {
+    if (registrationClosed) return;
+    if (!newPlayer.name || !newPlayer.email) return;
+    try {
+      await tournamentService.manualRegister(
+        tournamentId,
+        newPlayer.name,
+        newPlayer.email
+      );
+      setNewPlayer({ name: '', email: '' });
+      await loadPlayers();
+      setError(null);
+    } catch (err) {
+      setError(err.message || 'Failed to register player');
+    }
+  };
+
   if (!isStaff) return null;
   if (loading) return <div className="text-center p-4">Loading players...</div>;
   if (error) return (
@@ -136,6 +154,41 @@ const PlayerManagement = ({ tournamentId }) => {
           <div className="text-sm text-gray-600">Total Add-ons</div>
         </div>
       </div>
+
+      {/* Manual Registration */}
+      {!registrationClosed ? (
+        <div className="bg-white p-4 rounded-lg mb-6">
+          <h3 className="text-lg font-medium mb-2">Add Player</h3>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              placeholder="Name"
+              value={newPlayer.name}
+              onChange={(e) => setNewPlayer({ ...newPlayer, name: e.target.value })}
+              className="border rounded px-2 py-1"
+            />
+            <input
+              type="email"
+              placeholder="Email"
+              value={newPlayer.email}
+              onChange={(e) =>
+                setNewPlayer({ ...newPlayer, email: e.target.value })
+              }
+              className="border rounded px-2 py-1"
+            />
+            <button
+              onClick={handleManualRegister}
+              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-6">
+          Registrations are closed. A champion has been crowned.
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
