@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS registrations (
   checked_in BOOLEAN DEFAULT FALSE,
   eliminated BOOLEAN DEFAULT FALSE,
   finish_place INTEGER,
+  elimination_order INTEGER,
   single_rebuys INTEGER DEFAULT 0,
   double_rebuys INTEGER DEFAULT 0,
   addon_used BOOLEAN DEFAULT FALSE,
