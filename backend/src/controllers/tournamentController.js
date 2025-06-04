@@ -623,16 +623,15 @@ const tournamentController = {
       const totalPlayers = registrations.filter(r => r.checked_in).length;
       const eliminatedPlayers = registrations.filter(r => r.eliminated).length;
       
-      // Calculate finish place (total players - eliminated players)
-      // This way, last player eliminated gets 2nd place, second to last gets 3rd, etc.
-      // The last remaining player will be the champion (1st place)
-      const finishPlace = totalPlayers - eliminatedPlayers;
+      // Determine elimination order but do not set final position yet
+      const eliminationOrder = eliminatedPlayers + 1;
 
       const { data, error } = await supabase
         .from('registrations')
-        .update({ 
+        .update({
           eliminated: true,
-          finish_place: finishPlace
+          elimination_order: eliminationOrder,
+          finish_place: null
         })
         .eq('tournament_id', tournamentId)
         .eq('user_id', userId)
@@ -648,9 +647,9 @@ const tournamentController = {
         return res.status(404).json({ error: 'Registration not found' });
       }
 
-      // If this was the second to last player (meaning only one remains),
-      // automatically set the remaining player as the champion
-      if (finishPlace === 2) {
+      // If this elimination leaves only one player remaining,
+      // automatically crown the champion and finalize positions
+      if (totalPlayers - eliminationOrder === 1) {
         const { data: lastPlayer } = await supabase
           .from('registrations')
           .select('user_id')
@@ -659,14 +658,30 @@ const tournamentController = {
           .single();
 
         if (lastPlayer) {
+          // Set champion elimination order as the total number of players
           await supabase
             .from('registrations')
-            .update({ 
+            .update({
               eliminated: true,
+              elimination_order: totalPlayers,
               finish_place: 1  // Champion
             })
             .eq('tournament_id', tournamentId)
             .eq('user_id', lastPlayer.user_id);
+
+          // Finalize finish positions for all players based on elimination order
+          const { data: allRegs } = await supabase
+            .from('registrations')
+            .select('id, elimination_order')
+            .eq('tournament_id', tournamentId);
+
+          for (const reg of allRegs) {
+            const finalPlace = totalPlayers - reg.elimination_order + 1;
+            await supabase
+              .from('registrations')
+              .update({ finish_place: finalPlace })
+              .eq('id', reg.id);
+          }
         }
       }
 
