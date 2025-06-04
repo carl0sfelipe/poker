@@ -4,18 +4,18 @@ const BLIND_STRUCTURES = {
   small: {
     name: 'Turbo (15 min)',
     levels: [
-      { level: 1, small_blind: 25, big_blind: 50, duration: 15 },
-      { level: 2, small_blind: 50, big_blind: 100, duration: 15 },
-      { level: 3, small_blind: 75, big_blind: 150, duration: 15 },
-      { level: 4, small_blind: 100, big_blind: 200, duration: 15 },
-      { level: 5, small_blind: 150, big_blind: 300, duration: 15 },
-      { level: 6, small_blind: 200, big_blind: 400, duration: 15 },
-      { level: 7, small_blind: 300, big_blind: 600, duration: 15 },
-      { level: 8, small_blind: 400, big_blind: 800, duration: 15 },
-      { level: 9, small_blind: 600, big_blind: 1200, duration: 15 },
-      { level: 10, small_blind: 800, big_blind: 1600, duration: 15 },
-      { level: 11, small_blind: 1000, big_blind: 2000, duration: 15 },
-      { level: 12, small_blind: 1500, big_blind: 3000, duration: 15 },
+      { level: 1, small_blind: 100, big_blind: 100, duration: 15 },
+      { level: 2, small_blind: 100, big_blind: 200, duration: 15 },
+      { level: 3, small_blind: 100, big_blind: 300, duration: 15 },
+      { level: 4, small_blind: 200, big_blind: 400, duration: 15 },
+      { level: 5, small_blind: 300, big_blind: 600, duration: 15 },
+      { level: 6, small_blind: 400, big_blind: 800, duration: 15 },
+      { level: 7, small_blind: 500, big_blind: 1000, duration: 15 },
+      { level: 8, small_blind: 600, big_blind: 1200, duration: 15 },
+      { level: 9, small_blind: 800, big_blind: 1600, duration: 15 },
+      { level: 10, small_blind: 1000, big_blind: 2000, duration: 15 },
+      { level: 11, small_blind: 1500, big_blind: 3000, duration: 15 },
+      { level: 12, small_blind: 2000, big_blind: 4000, duration: 15 },
     ]
   },
   
@@ -23,20 +23,20 @@ const BLIND_STRUCTURES = {
   medium: {
     name: 'Regular (20 min)',
     levels: [
-      { level: 1, small_blind: 25, big_blind: 50, duration: 20 },
-      { level: 2, small_blind: 50, big_blind: 100, duration: 20 },
-      { level: 3, small_blind: 75, big_blind: 150, duration: 20 },
-      { level: 4, small_blind: 100, big_blind: 200, duration: 20 },
-      { level: 5, small_blind: 150, big_blind: 300, duration: 20 },
-      { level: 6, small_blind: 200, big_blind: 400, duration: 20 },
-      { level: 7, small_blind: 300, big_blind: 600, duration: 20 },
-      { level: 8, small_blind: 400, big_blind: 800, duration: 20 },
-      { level: 9, small_blind: 500, big_blind: 1000, duration: 20 },
-      { level: 10, small_blind: 700, big_blind: 1400, duration: 20 },
-      { level: 11, small_blind: 1000, big_blind: 2000, duration: 20 },
-      { level: 12, small_blind: 1500, big_blind: 3000, duration: 20 },
-      { level: 13, small_blind: 2000, big_blind: 4000, duration: 20 },
-      { level: 14, small_blind: 3000, big_blind: 6000, duration: 20 },
+      { level: 1, small_blind: 100, big_blind: 100, duration: 20 },
+      { level: 2, small_blind: 100, big_blind: 200, duration: 20 },
+      { level: 3, small_blind: 100, big_blind: 300, duration: 20 },
+      { level: 4, small_blind: 200, big_blind: 400, duration: 20 },
+      { level: 5, small_blind: 300, big_blind: 600, duration: 20 },
+      { level: 6, small_blind: 400, big_blind: 800, duration: 20 },
+      { level: 7, small_blind: 500, big_blind: 1000, duration: 20 },
+      { level: 8, small_blind: 600, big_blind: 1200, duration: 20 },
+      { level: 9, small_blind: 800, big_blind: 1600, duration: 20 },
+      { level: 10, small_blind: 1000, big_blind: 2000, duration: 20 },
+      { level: 11, small_blind: 1500, big_blind: 3000, duration: 20 },
+      { level: 12, small_blind: 2000, big_blind: 4000, duration: 20 },
+      { level: 13, small_blind: 3000, big_blind: 6000, duration: 20 },
+      { level: 14, small_blind: 4000, big_blind: 8000, duration: 20 },
     ]
   },
   
@@ -44,22 +44,22 @@ const BLIND_STRUCTURES = {
   large: {
     name: 'Deep Stack (30 min)',
     levels: [
-      { level: 1, small_blind: 25, big_blind: 50, duration: 30 },
-      { level: 2, small_blind: 50, big_blind: 100, duration: 30 },
-      { level: 3, small_blind: 75, big_blind: 150, duration: 30 },
-      { level: 4, small_blind: 100, big_blind: 200, duration: 30 },
-      { level: 5, small_blind: 150, big_blind: 300, duration: 30 },
-      { level: 6, small_blind: 200, big_blind: 400, duration: 30 },
-      { level: 7, small_blind: 250, big_blind: 500, duration: 30 },
-      { level: 8, small_blind: 300, big_blind: 600, duration: 30 },
-      { level: 9, small_blind: 400, big_blind: 800, duration: 30 },
-      { level: 10, small_blind: 500, big_blind: 1000, duration: 30 },
-      { level: 11, small_blind: 700, big_blind: 1400, duration: 30 },
-      { level: 12, small_blind: 1000, big_blind: 2000, duration: 30 },
-      { level: 13, small_blind: 1500, big_blind: 3000, duration: 30 },
-      { level: 14, small_blind: 2000, big_blind: 4000, duration: 30 },
-      { level: 15, small_blind: 3000, big_blind: 6000, duration: 30 },
-      { level: 16, small_blind: 4000, big_blind: 8000, duration: 30 },
+      { level: 1, small_blind: 100, big_blind: 100, duration: 30 },
+      { level: 2, small_blind: 100, big_blind: 200, duration: 30 },
+      { level: 3, small_blind: 100, big_blind: 300, duration: 30 },
+      { level: 4, small_blind: 200, big_blind: 400, duration: 30 },
+      { level: 5, small_blind: 300, big_blind: 600, duration: 30 },
+      { level: 6, small_blind: 400, big_blind: 800, duration: 30 },
+      { level: 7, small_blind: 500, big_blind: 1000, duration: 30 },
+      { level: 8, small_blind: 600, big_blind: 1200, duration: 30 },
+      { level: 9, small_blind: 800, big_blind: 1600, duration: 30 },
+      { level: 10, small_blind: 1000, big_blind: 2000, duration: 30 },
+      { level: 11, small_blind: 1500, big_blind: 3000, duration: 30 },
+      { level: 12, small_blind: 2000, big_blind: 4000, duration: 30 },
+      { level: 13, small_blind: 3000, big_blind: 6000, duration: 30 },
+      { level: 14, small_blind: 4000, big_blind: 8000, duration: 30 },
+      { level: 15, small_blind: 5000, big_blind: 10000, duration: 30 },
+      { level: 16, small_blind: 6000, big_blind: 12000, duration: 30 },
     ]
   }
 };
@@ -95,8 +95,8 @@ const validateBlindStructure = (structure, startingStack) => {
     }
 
     // Verificar se small blind é menor que big blind
-    if (level.small_blind >= level.big_blind) {
-      return { valid: false, error: `Nível ${i + 1}: Small blind deve ser menor que big blind` };
+    if (level.small_blind > level.big_blind) {
+      return { valid: false, error: `Nível ${i + 1}: Small blind deve ser menor ou igual ao big blind` };
     }
 
     // Verificar se o big blind inicial não é muito alto em relação ao stack inicial
