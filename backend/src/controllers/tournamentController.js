@@ -693,6 +693,66 @@ const tournamentController = {
     }
   },
 
+  async settlePayment(req, res) {
+    try {
+      const { id: tournamentId } = req.params;
+      const { userId, confirmPayment, includeAddon } = req.body;
+
+      // Fetch registration
+      const { data: registration, error: regError } = await supabase
+        .from('registrations')
+        .select('*')
+        .eq('tournament_id', tournamentId)
+        .eq('user_id', userId)
+        .single();
+
+      if (regError) throw regError;
+      if (!registration) {
+        return res.status(404).json({ error: 'Registration not found' });
+      }
+
+      // Calculate amount due using DB function
+      const { data: dueData, error: dueError } = await supabase.rpc(
+        'calculate_total_due',
+        { registration_id: registration.id }
+      );
+
+      if (dueError) throw dueError;
+      const totalDue = Array.isArray(dueData) ? dueData[0] : dueData;
+
+      if (confirmPayment) {
+        // Mark rebuys and addon as paid
+        const updates = {
+          rebuys_paid: true,
+          payment_status: 'paid',
+          payment_timestamp: new Date().toISOString(),
+        };
+
+        if (includeAddon) {
+          updates.addon_paid = true;
+          updates.addon_used = true;
+        }
+
+        const { data: updated, error: updError } = await supabase
+          .from('registrations')
+          .update(updates)
+          .eq('id', registration.id)
+          .select()
+          .single();
+
+        if (updError) throw updError;
+        return res.json({ ...updated, total_due: totalDue });
+      } else {
+        // Eliminate player without payment
+        req.body = { userId };
+        return this.eliminate(req, res);
+      }
+    } catch (error) {
+      console.error('Settle payment error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
   async exportResults(req, res) {
     try {
       const { id: tournamentId } = req.params;
