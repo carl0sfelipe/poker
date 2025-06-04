@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import tournamentService from '../../services/tournamentService';
 import authService from '../../services/authService';
+import userService from '../../services/userService';
 
 const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = false }) => {
   const [players, setPlayers] = useState([]);
@@ -13,6 +14,8 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     totalAddons: 0
   });
   const [newPlayer, setNewPlayer] = useState({ name: '', email: '' });
+  const [existingUsers, setExistingUsers] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
   const isStaff = authService.isStaff();
 
   useEffect(() => {
@@ -23,6 +26,20 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     }
     loadPlayers();
   }, [tournamentId, isStaff, refreshKey]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const data = await userService.list();
+        setExistingUsers(data);
+      } catch (err) {
+        console.error('Failed to load users', err);
+      }
+    };
+    if (isStaff) {
+      fetchUsers();
+    }
+  }, [isStaff]);
 
   const calculateTournamentStats = (registrations) => {
     const stats = {
@@ -116,6 +133,21 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     }
   };
 
+  const handleRegisterExisting = async () => {
+    if (registrationClosed) return;
+    if (!selectedUserId) return;
+    const user = existingUsers.find(u => u.id === selectedUserId);
+    if (!user) return;
+    try {
+      await tournamentService.manualRegister(tournamentId, user.name, user.email);
+      setSelectedUserId('');
+      await loadPlayers();
+      setError(null);
+    } catch (err) {
+      setError(err.message || 'Failed to register player');
+    }
+  };
+
   if (!isStaff) return null;
   if (loading) return <div className="text-center p-4">Loading players...</div>;
   if (error) return (
@@ -159,29 +191,51 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
       {!registrationClosed ? (
         <div className="bg-white p-4 rounded-lg mb-6">
           <h3 className="text-lg font-medium mb-2">Add Player</h3>
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              placeholder="Name"
-              value={newPlayer.name}
-              onChange={(e) => setNewPlayer({ ...newPlayer, name: e.target.value })}
-              className="border rounded px-2 py-1"
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={newPlayer.email}
-              onChange={(e) =>
-                setNewPlayer({ ...newPlayer, email: e.target.value })
-              }
-              className="border rounded px-2 py-1"
-            />
-            <button
-              onClick={handleManualRegister}
-              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Add
-            </button>
+          <div className="space-y-2">
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                placeholder="Name"
+                value={newPlayer.name}
+                onChange={(e) => setNewPlayer({ ...newPlayer, name: e.target.value })}
+                className="border rounded px-2 py-1"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={newPlayer.email}
+                onChange={(e) =>
+                  setNewPlayer({ ...newPlayer, email: e.target.value })
+                }
+                className="border rounded px-2 py-1"
+              />
+              <button
+                onClick={handleManualRegister}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Add
+              </button>
+            </div>
+            <div className="flex space-x-2">
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="border rounded px-2 py-1 flex-grow"
+              >
+                <option value="">Select existing user</option>
+                {existingUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleRegisterExisting}
+                className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+              >
+                Register
+              </button>
+            </div>
           </div>
         </div>
       ) : (

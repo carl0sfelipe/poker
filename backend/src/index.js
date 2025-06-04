@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const database = require('./middleware/database');
 const authRoutes = require('./routes/auth');
 const tournamentRoutes = require('./routes/tournaments');
+const userRoutes = require('./routes/users');
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use(database);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tournaments', tournamentRoutes);
+app.use('/api/users', userRoutes);
 
 // Basic health check endpoint
 app.get('/health', (req, res) => {
