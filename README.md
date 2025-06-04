@@ -4,6 +4,7 @@ This project provides a full stack application for managing poker tournaments. I
 
 ## Setup
 
+Install all dependencies for both the backend and frontend:
 Use Node.js 18 or 20. If you have `nvm` installed you can run:
 
 ```bash
