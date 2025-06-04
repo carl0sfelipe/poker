@@ -1,9 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const morgan = require('morgan');
 const database = require('./middleware/database');
-const authRoutes = require('./routes/auth');
-const tournamentRoutes = require('./routes/tournaments');
+let authRoutes;
+let tournamentRoutes;
+if (process.env.NODE_ENV !== 'test') {
+  authRoutes = require('./routes/auth');
+  tournamentRoutes = require('./routes/tournaments');
+}
 
 dotenv.config();
 
@@ -19,11 +24,19 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+app.disable('etag');
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+app.use(morgan('dev'));
 app.use(database);
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/tournaments', tournamentRoutes);
+if (process.env.NODE_ENV !== 'test') {
+  app.use('/api/auth', authRoutes);
+  app.use('/api/tournaments', tournamentRoutes);
+}
 
 // Basic health check endpoint
 app.get('/health', (req, res) => {
@@ -31,6 +44,10 @@ app.get('/health', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-}); 
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;

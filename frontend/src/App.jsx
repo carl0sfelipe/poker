@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import TournamentList from './components/tournaments/TournamentList';
 import CreateTournament from './components/tournaments/CreateTournament';
-import TournamentDetail from './components/tournaments/TournamentDetail';
+import TournamentDetails from './components/tournaments/TournamentDetails';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import StaffRoute from './components/auth/StaffRoute';
@@ -21,16 +21,13 @@ function App() {
   const [user, setUser] = useState(authService.getUser());
 
   useEffect(() => {
-    // Atualiza o estado quando o token mudar
-    const checkAuth = () => {
+    const syncAuth = () => {
       setIsAuthenticated(authService.isAuthenticated());
       setUser(authService.getUser());
     };
-
-    // Verifica a autenticação a cada segundo
-    const interval = setInterval(checkAuth, 1000);
-
-    return () => clearInterval(interval);
+    syncAuth();
+    window.addEventListener('storage', syncAuth);
+    return () => window.removeEventListener('storage', syncAuth);
   }, []);
 
   const handleLogout = () => {
@@ -105,7 +102,7 @@ function App() {
                 </StaffRoute>
               }
             />
-            <Route path="/tournaments/:id" element={<TournamentDetail />} />
+            <Route path="/tournaments/:id" element={<TournamentDetails />} />
           </Routes>
         </main>
       </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import tournamentService from '../../services/tournamentService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import TournamentLevelControl from './TournamentLevelControl';
 import TournamentStats from './TournamentStats';
 import PlayersList from './PlayersList';
@@ -14,13 +14,22 @@ const TournamentDetails = () => {
   const [registration, setRegistration] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showSettlement, setShowSettlement] = useState(false);
+  const [includeAddon, setIncludeAddon] = useState(false);
+
+  const singleRebuyPrice = tournament?.rebuy?.single?.price || 0;
+  const doubleRebuyPrice = tournament?.rebuy?.double?.price || 0;
+  const rebuysDue =
+    (registration?.single_rebuys || 0) * singleRebuyPrice +
+    (registration?.double_rebuys || 0) * doubleRebuyPrice;
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('Fetching tournament', id, 'for user', user?.id);
         const [tournamentData, registrationData] = await Promise.all([
           tournamentService.getById(id),
-          user ? tournamentService.getRegistration(id, user.id) : null
+          user?.id ? tournamentService.getRegistration(id, user.id) : null
         ]);
         setTournament(tournamentData);
         setRegistration(registrationData);
@@ -32,7 +41,7 @@ const TournamentDetails = () => {
     };
 
     fetchData();
-  }, [id, user]);
+  }, [id, user?.id]);
 
   const handleRebuy = async (type) => {
     try {
@@ -79,6 +88,24 @@ const TournamentDetails = () => {
 
       const updatedRegistration = await tournamentService.performAddon(id, user.id);
       setRegistration(updatedRegistration);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const openSettlement = () => {
+    setIncludeAddon(false);
+    setShowSettlement(true);
+  };
+
+  const confirmSettlement = async () => {
+    try {
+      if (includeAddon && tournament.addon.allowed && !registration.addon_used) {
+        const updated = await tournamentService.performAddon(id, user.id);
+        setRegistration(updated);
+      }
+      setShowSettlement(false);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -135,7 +162,7 @@ const TournamentDetails = () => {
             <p><strong>Stack Atual:</strong> {registration.current_stack}</p>
             <p><strong>Rebuys Simples:</strong> {registration.single_rebuys}</p>
             <p><strong>Rebuys Duplos:</strong> {registration.double_rebuys}</p>
-            <p><strong>Add-on Realizado:</strong> {registration.addon_done ? 'Sim' : 'Não'}</p>
+            <p><strong>Add-on Realizado:</strong> {registration.addon_used ? 'Sim' : 'Não'}</p>
             <p><strong>Status:</strong> {registration.eliminated ? 'Eliminado' : 'Ativo'}</p>
             
             {!registration.eliminated && tournament.current_level > tournament.addon_break_level && (
@@ -188,25 +215,16 @@ const TournamentDetails = () => {
         </div>
       )}
 
-      {/* Opção de Add-on */}
-      {registration && !registration.eliminated && tournament.addon.allowed && (
+      {/* Settlement */}
+      {registration && !registration.eliminated && (
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Add-on</h2>
-          <div className="space-y-2">
-            <p><strong>Stack:</strong> {tournament.addon.stack}</p>
-            <p><strong>Preço:</strong> R$ {tournament.addon.price}</p>
-            
-            {tournament.current_level === tournament.addon_break_level && 
-             tournament.is_break && 
-             !registration.addon_done && (
-              <button
-                onClick={handleAddon}
-                className="mt-4 bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
-              >
-                Fazer Add-on
-              </button>
-            )}
-          </div>
+          <h2 className="text-xl font-semibold mb-4">Settle Up</h2>
+          <button
+            onClick={openSettlement}
+            className="mt-2 bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
+          >
+            Settle Up
+          </button>
         </div>
       )}
 
@@ -218,6 +236,42 @@ const TournamentDetails = () => {
 
       {/* Histórico do Torneio */}
       <TournamentHistory tournament={tournament} />
+
+      {showSettlement && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">Settle Up</h3>
+            <p className="mb-2 text-gray-700">Rebuys Due: R$ {rebuysDue}</p>
+            {tournament.addon.allowed && !registration.addon_used && (
+              <label className="flex items-center space-x-2 mb-2">
+                <input
+                  type="checkbox"
+                  checked={includeAddon}
+                  onChange={(e) => setIncludeAddon(e.target.checked)}
+                />
+                <span>Add-on for R$ {tournament.addon.price} (+{tournament.addon.stack} chips)</span>
+              </label>
+            )}
+            <p className="mb-6 font-semibold">
+              Total: R$ {rebuysDue + (includeAddon ? tournament.addon.price : 0)}
+            </p>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setShowSettlement(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmSettlement}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
