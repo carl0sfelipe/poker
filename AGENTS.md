@@ -1,37 +1,125 @@
-# Poker Tournament Manager
+# Poker Platform – Database Schema (public)
 
-This project provides a full stack application for managing poker tournaments. It consists of a Node.js backend and a React frontend.
+> **Versão gerada automaticamente – *04 Jun 2025***
+>
+> Schema básico para o MVP do sistema de torneios de poker. Contém apenas três tabelas centrais (`users`, `tournaments`, `registrations`) e suas relações.
 
-## Setup
+---
 
-Install all dependencies for both the backend and frontend:
+## Diagrama geral
 
-```bash
-npm run install-all
+```
+users ──┐             ┌──< registrations >── tournaments
+        └── user_id ─┘            │            └─ tournament_id
+                                   └─ FK refs ──┘
 ```
 
-## Development
+---
 
-Start the backend and frontend in parallel:
+## Tabelas
 
-```bash
-npm start
-```
+### 1. `users`
 
-The frontend will be available at `http://localhost:5173`.
+| Coluna          | Tipo          | PK | Nullable | Default/Extra       | Descrição                      |
+| --------------- | ------------- | -- | -------- | ------------------- | ------------------------------ |
+| `id`            | `uuid`        | ✔  | NO       | `gen_random_uuid()` | Identificador único do usuário |
+| `email`         | `text`        |    | NO       |                     | E‑mail de login (único)        |
+| `password_hash` | `text`        |    | NO       |                     | Hash BCrypt / Argon2           |
+| `role`          | `text`        |    | NO       | `'player'`          | Papel (player, staff, admin)   |
+| `created_at`    | `timestamptz` |    | NO       | `now()`             | Timestamp de criação           |
+| `name`          | `varchar`     |    | SIM      |                     | Nome de exibição               |
 
-## Database Migrations
+**Primary Key:** (`id`)
 
-Run all database migrations against your Supabase instance by executing:
+---
 
-```bash
-cd backend && node src/database/migrate.js
-```
+### 2. `tournaments`
 
-## Running Tests
+| Coluna                       | Tipo          | PK | Nullable | Default/Extra       | Descrição                                  |
+| ---------------------------- | ------------- | -- | -------- | ------------------- | ------------------------------------------ |
+| `id`                         | `uuid`        | ✔  | NO       | `gen_random_uuid()` | Identificador do torneio                   |
+| `name`                       | `text`        |    | NO       |                     | Nome do torneio                            |
+| `start_time`                 | `timestamptz` |    | NO       |                     | Data/hora de início                        |
+| `starting_stack`             | `int4`        |    | NO       |                     | Stack inicial em fichas                    |
+| `blind_structure`            | `jsonb`       |    | NO       |                     | Estrutura completa de blinds               |
+| `status`                     | `text`        |    | NO       | `'scheduled'`       | Estado (scheduled, running, paused, done…) |
+| `created_at`                 | `timestamptz` |    | NO       | `now()`             | Timestamp de criação                       |
+| `bonuses`                    | `jsonb`       |    | SIM      |                     | Config. de bônus (tickets, promoções)      |
+| `addon`                      | `jsonb`       |    | SIM      |                     | Configuração de addon                      |
+| `rebuy`                      | `jsonb`       |    | SIM      |                     | Regras de rebuy                            |
+| `rebuy_max_level`            | `int4`        |    | SIM      |                     | Nível (round) máximo para rebuy            |
+| `max_stack_for_single_rebuy` | `int4`        |    | SIM      |                     | Stack máximo permitido num rebuy simples   |
+| `addon_break_level`          | `int4`        |    | SIM      |                     | Nível em que o addon é permitido           |
+| `current_level`              | `int4`        |    | SIM      |                     | Nível atual (runtime)                      |
+| `current_blind_index`        | `int4`        |    | SIM      |                     | Posição na lista de blinds                 |
+| `is_break`                   | `bool`        |    | SIM      | `false`             | Flag se o torneio está em intervalo        |
 
-Inside `frontend` run:
+**Primary Key:** (`id`)
 
-```bash
-npm test
-```
+---
+
+### 3. `registrations`
+
+| Coluna              | Tipo             | PK | Nullable | Default/Extra         | Descrição                                |
+| ------------------- | ---------------- | -- | -------- | --------------------- | ---------------------------------------- |
+| `id`                | `uuid`           | ✔  | NO       | `gen_random_uuid()`   | Identificador da inscrição               |
+| `user_id`           | `uuid`           |    | NO       | FK → `users.id`       | Jogador inscrito                         |
+| `tournament_id`     | `uuid`           |    | NO       | FK → `tournaments.id` | Torneio correspondente                   |
+| `checked_in`        | `bool`           |    | NO       | `false`               | Check‑in confirmado?                     |
+| `seat_number`       | `int4`           |    | SIM      |                       | Nº do assento                            |
+| `table_number`      | `int4`           |    | SIM      |                       | Mesa                                     |
+| `finish_place`      | `int4`           |    | SIM      |                       | Colocação final                          |
+| `created_at`        | `timestamptz`    |    | NO       | `now()`               | Timestamp de inscrição                   |
+| `current_stack`     | `int4`           |    | SIM      |                       | Stack atual (runtime)                    |
+| `selected_bonuses`  | `_text` (array)  |    | SIM      |                       | Bônus escolhidos                         |
+| `rebuys`            | `_jsonb` (array) |    | SIM      |                       | Histórico de rebuys                      |
+| `addon_used`        | `bool`           |    | NO       | `false`               | Usou addon?                              |
+| `single_rebuys`     | `int4`           |    | NO       | `0`                   | Qtde de rebuy simples                    |
+| `double_rebuys`     | `int4`           |    | NO       | `0`                   | Qtde de rebuy duplo                      |
+| `eliminated`        | `bool`           |    | NO       | `false`               | Já foi eliminado?                        |
+| `stack_at_rebuy`    | `int4`           |    | SIM      |                       | Stack quando fez rebuy                   |
+| `elimination_level` | `int4`           |    | SIM      |                       | Level em que foi eliminado               |
+| `last_rebuy_level`  | `int4`           |    | SIM      |                       | Level do último rebuy                    |
+| `elimination_order` | `int4`           |    | SIM      |                       | Ordem cronológica de eliminação          |
+| `rebuys_paid`       | `bool`           |    | NO       | `false`               | Pagou pelos rebuys?                      |
+| `addon_paid`        | `bool`           |    | NO       | `false`               | Pagou pelo addon?                        |
+| `payment_status`    | `text`           |    | NO       | `'pending'`           | pending / paid / refunded                |
+| `payment_timestamp` | `timestamptz`    |    | SIM      |                       | Horário da última tentativa de pagamento |
+
+**Primary Key:** (`id`)
+
+**Foreign Keys:**
+
+* `user_id` → `users(id)`
+* `tournament_id` → `tournaments(id)`
+
+---
+
+## Índice de relacionamento
+
+| Origem                        | FK               | Destino       | Cardinalidade |
+| ----------------------------- | ---------------- | ------------- | ------------- |
+| `registrations.user_id`       | `users.id`       | `users`       | N : 1         |
+| `registrations.tournament_id` | `tournaments.id` | `tournaments` | N : 1         |
+
+---
+
+## Regras e observações de negócio
+
+1. **Um usuário pode ter múltiplas inscrições** (`registrations`) em torneios diferentes, mas no MVP assumimos **uma inscrição por torneio**.
+2. **Pagamentos**: os campos `payment_status` e `payment_timestamp` registram a quitação de rebuy/addon; pagamentos parciais são controlados pelos flags `rebuys_paid` e `addon_paid`.
+3. **Runtime state** (blinds correntes, stacks etc.) é persistido diretamente nas tabelas para simplificar o MVP; versão futura deve mover para tabelas de histórico ou Redis.
+
+---
+
+### Próximos passos sugeridos
+
+| Sprint | Item                                                                         | Comentário                          |
+| ------ | ---------------------------------------------------------------------------- | ----------------------------------- |
+| 1      | Índices em `registrations (tournament_id, user_id)`                          | Optimizar consultas frequentes      |
+| 2      | Tabela `tables` para controle de mesas físicas                               | Remove duplicidade (`table_number`) |
+| 3      | Trigger de atualização automática de `current_level` / `current_blind_index` | Garantir consistência runtime       |
+
+---
+
+*Fim do documento*
