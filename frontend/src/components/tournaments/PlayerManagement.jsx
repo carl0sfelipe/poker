@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import tournamentService from '../../services/tournamentService';
 import authService from '../../services/authService';
 import userService from '../../services/userService';
+import SettlementModal from './SettlementModal';
 
 const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = false }) => {
   const [players, setPlayers] = useState([]);
@@ -16,6 +17,8 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
   const [newPlayer, setNewPlayer] = useState({ name: '', email: '' });
   const [existingUsers, setExistingUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [settlementPlayer, setSettlementPlayer] = useState(null);
+  const [showSettlement, setShowSettlement] = useState(false);
   const isStaff = authService.isStaff();
 
   useEffect(() => {
@@ -148,6 +151,19 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     }
   };
 
+  const openSettlement = (player) => {
+    setSettlementPlayer(player);
+    setShowSettlement(true);
+  };
+
+  const closeSettlement = async (refresh = false) => {
+    setShowSettlement(false);
+    setSettlementPlayer(null);
+    if (refresh) {
+      await loadPlayers();
+    }
+  };
+
   if (!isStaff) return null;
   if (loading) return <div className="text-center p-4">Loading players...</div>;
   if (error) return (
@@ -252,6 +268,7 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rebuys</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
               {(tournament?.rebuy?.allowed || tournament?.addon?.allowed) && (
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stack Options</th>
               )}
@@ -323,6 +340,19 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
                     )}
                   </div>
                 </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {player.rebuys_paid && (player.addon_used ? player.addon_paid : true) ? (
+                    <span className="text-green-600 font-medium">Paid</span>
+                  ) : (
+                    <button
+                      onClick={() => openSettlement(player)}
+                      className="px-3 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600"
+                    >
+                      Settle Up
+                    </button>
+                  )}
+                </td>
                 {(tournament?.rebuy?.allowed || tournament?.addon?.allowed) && (
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex space-x-2">
@@ -361,6 +391,14 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
           </tbody>
         </table>
       </div>
+      {showSettlement && settlementPlayer && (
+        <SettlementModal
+          isOpen={showSettlement}
+          onClose={closeSettlement}
+          player={settlementPlayer}
+          tournament={tournament}
+        />
+      )}
     </div>
   );
 };

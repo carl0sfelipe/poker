@@ -153,6 +153,20 @@ const tournamentService = {
     }
   },
 
+  async settlePayment(tournamentId, userId, { confirmPayment, includeAddon }) {
+    try {
+      const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/settle-payment`, {
+        userId,
+        confirmPayment,
+        includeAddon
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Settle payment error:', error);
+      throw this._handleError(error);
+    }
+  },
+
     async eliminatePlayer(tournamentId, userId) {
       try {
         const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/eliminate`, {

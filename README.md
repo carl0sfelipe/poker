@@ -20,6 +20,14 @@ npm start
 
 The frontend will be available at `http://localhost:5173`.
 
+## Database Migrations
+
+Run all database migrations against your Supabase instance by executing:
+
+```bash
+cd backend && node src/database/migrate.js
+```
+
 ## Running Tests
 
 Inside `frontend` run:
