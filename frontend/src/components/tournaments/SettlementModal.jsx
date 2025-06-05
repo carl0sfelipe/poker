@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog } from '@headlessui/react';
+import { Dialog, DialogBackdrop } from '@headlessui/react';
 import tournamentService from '../../services/tournamentService';
 
 const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
@@ -47,7 +47,7 @@ const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
       className="fixed z-10 inset-0 overflow-y-auto"
     >
       <div className="flex items-center justify-center min-h-screen">
-        <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+        <DialogBackdrop className="fixed inset-0 bg-black opacity-30" />
 
         <div className="relative bg-white rounded-lg max-w-md w-full mx-4 p-6">
           <button
