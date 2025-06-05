@@ -18,17 +18,15 @@ DECLARE
     reg RECORD;
     tournament RECORD;
 BEGIN
-    -- Get registration and tournament details
-    SELECT r.*, t.* INTO reg, tournament
-    FROM registrations r
-    JOIN tournaments t ON r.tournament_id = t.id
-    WHERE r.id = registration_id;
+    -- Get registration and tournament details separately
+    SELECT * INTO reg FROM registrations WHERE id = registration_id;
+    SELECT * INTO tournament FROM tournaments WHERE id = reg.tournament_id;
 
     -- Calculate rebuy costs
     IF NOT reg.rebuys_paid THEN
-        total := total + 
-            (reg.single_rebuys * (tournament.rebuy->>'single'->>'price')::INTEGER) +
-            (reg.double_rebuys * (tournament.rebuy->>'double'->>'price')::INTEGER);
+        total := total +
+            (reg.single_rebuys * (tournament.rebuy->'single'->>'price')::INTEGER) +
+            (reg.double_rebuys * (tournament.rebuy->'double'->>'price')::INTEGER);
     END IF;
 
     -- Add addon cost if used but not paid

@@ -22,5 +22,6 @@ router.get('/:id/export', auth, checkRole(['admin', 'staff']), tournamentControl
 router.post('/:id/delete', auth, checkRole(['admin', 'staff']), tournamentController.delete);
 router.post('/:id/rebuy', auth, checkRole(['admin', 'staff']), tournamentController.addRebuy);
 router.post('/:id/addon', auth, checkRole(['admin', 'staff']), tournamentController.addAddon);
+router.post('/:id/settle', auth, checkRole(['admin', 'staff']), tournamentController.settlePayment);
 
-module.exports = router; 
+module.exports = router;

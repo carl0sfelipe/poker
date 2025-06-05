@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Dialog } from '@headlessui/react';
+import React, { Fragment, useState } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
 import tournamentService from '../../services/tournamentService';
 
 const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
@@ -43,15 +43,26 @@ const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={() => !isProcessing && onClose()}
-      className="fixed z-10 inset-0 overflow-y-auto"
-    >
-      <div className="flex items-center justify-center min-h-screen">
-        <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog
+        as="div"
+        className="fixed z-10 inset-0 overflow-y-auto"
+        onClose={() => !isProcessing && onClose()}
+      >
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black opacity-30" />
+        </Transition.Child>
 
-        <div className="relative bg-white rounded-lg max-w-md w-full mx-4 p-6">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="relative bg-white rounded-lg max-w-md w-full mx-4 p-6">
           <Dialog.Title className="text-lg font-medium mb-4">
             Payment Settlement - {player.user_name || player.user_email}
           </Dialog.Title>
@@ -109,14 +120,7 @@ const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => handleSettlement(false)}
-                disabled={isProcessing}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Eliminate Player
-              </button>
+            <div className="flex justify-end mt-6">
               <button
                 onClick={() => handleSettlement(true)}
                 disabled={isProcessing}
@@ -129,6 +133,7 @@ const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
         </div>
       </div>
     </Dialog>
+    </Transition>
   );
 };
 
