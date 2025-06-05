@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog } from '@headlessui/react';
+import { Dialog, DialogBackdrop } from '@headlessui/react';
 import tournamentService from '../../services/tournamentService';
 
 const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
@@ -9,16 +9,14 @@ const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
 
   const calculateTotalDue = () => {
     let total = 0;
-    
-    // Calculate rebuy costs
+
     if (!player.rebuys_paid) {
-      total += (player.single_rebuys || 0) * tournament.rebuy.single.price;
-      total += (player.double_rebuys || 0) * tournament.rebuy.double.price;
+      total += (player.single_rebuys || 0) * Number(tournament.rebuy.single.price);
+      total += (player.double_rebuys || 0) * Number(tournament.rebuy.double.price);
     }
 
-    // Add addon cost if selected
-    if (includeAddon && !player.addon_used) {
-      total += tournament.addon.price;
+    if ((player.addon_used && !player.addon_paid) || (includeAddon && !player.addon_used)) {
+      total += Number(tournament.addon.price);
     }
 
     return total;
@@ -49,9 +47,16 @@ const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
       className="fixed z-10 inset-0 overflow-y-auto"
     >
       <div className="flex items-center justify-center min-h-screen">
-        <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+        <DialogBackdrop className="fixed inset-0 bg-black opacity-30" />
 
         <div className="relative bg-white rounded-lg max-w-md w-full mx-4 p-6">
+          <button
+            onClick={() => !isProcessing && onClose()}
+            className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+            aria-label="Close"
+          >
+            &times;
+          </button>
           <Dialog.Title className="text-lg font-medium mb-4">
             Payment Settlement - {player.user_name || player.user_email}
           </Dialog.Title>
@@ -77,9 +82,7 @@ const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
             )}
 
             {/* Add-on Option */}
-            {tournament.addon.allowed && 
-             tournament.current_level === tournament.addon_break_level && 
-             !player.addon_used && (
+            {tournament.addon.allowed && !player.addon_used && (
               <div className="flex items-center space-x-2 py-2">
                 <input
                   type="checkbox"
@@ -110,13 +113,7 @@ const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
 
             {/* Action Buttons */}
             <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => handleSettlement(false)}
-                disabled={isProcessing}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Eliminate Player
-              </button>
+          
               <button
                 onClick={() => handleSettlement(true)}
                 disabled={isProcessing}

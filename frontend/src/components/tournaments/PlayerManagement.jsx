@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import tournamentService from '../../services/tournamentService';
 import authService from '../../services/authService';
 import userService from '../../services/userService';
+import SettlementModal from './SettlementModal';
 
 const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = false }) => {
   const [players, setPlayers] = useState([]);
@@ -16,7 +17,11 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
   const [newPlayer, setNewPlayer] = useState({ name: '', email: '' });
   const [existingUsers, setExistingUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [settlementPlayer, setSettlementPlayer] = useState(null);
+  const [showSettlement, setShowSettlement] = useState(false);
   const isStaff = authService.isStaff();
+  // Referência para manter a ordem original dos jogadores
+  const [originalOrder, setOriginalOrder] = useState([]);
 
   useEffect(() => {
     if (!isStaff) {
@@ -57,11 +62,50 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     setTournamentStats(stats);
   };
 
+  // Função auxiliar para ordenar jogadores
+  const sortPlayers = (players) => {
+    return [...players].sort((a, b) => b.id - a.id);  // Ordena pelo ID do registro em ordem decrescente
+  };
+
+  const maintainOrder = (newPlayers) => {
+    // Se é a primeira carga, define a ordem original
+    if (originalOrder.length === 0) {
+      const orderIds = newPlayers.map(p => p.id);
+      setOriginalOrder(orderIds);
+      return newPlayers;
+    }
+
+    // Mantém a ordem original e adiciona novos jogadores no topo
+    const orderedPlayers = [];
+    const newPlayerIds = new Set(newPlayers.map(p => p.id));
+    const oldPlayerIds = new Set(originalOrder);
+
+    // Adiciona novos jogadores no topo
+    newPlayers.forEach(player => {
+      if (!oldPlayerIds.has(player.id)) {
+        orderedPlayers.push(player);
+      }
+    });
+
+    // Adiciona jogadores existentes na ordem original
+    originalOrder.forEach(id => {
+      if (newPlayerIds.has(id)) {
+        const player = newPlayers.find(p => p.id === id);
+        if (player) {
+          orderedPlayers.push(player);
+        }
+      }
+    });
+
+    return orderedPlayers;
+  };
+
   const loadPlayers = async () => {
     try {
       const data = await tournamentService.getById(tournamentId);
       setTournament(data);
-      setPlayers(data.registrations || []);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
       calculateTournamentStats(data.registrations || []);
       setLoading(false);
     } catch (err) {
@@ -74,7 +118,9 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     if (!isStaff) return;
     try {
       await tournamentService.checkIn(tournamentId, userId);
-      await loadPlayers(); // Refresh data after check-in
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
       setError(null);
     } catch (err) {
       console.error('Check-in error:', err);
@@ -86,7 +132,9 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     if (!isStaff) return;
     try {
       await tournamentService.eliminatePlayer(tournamentId, userId);
-      await loadPlayers(); // Refresh data after elimination
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
       setError(null);
     } catch (err) {
       setError('Failed to eliminate player');
@@ -97,7 +145,10 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     if (!isStaff) return;
     try {
       await tournamentService.performRebuy(tournamentId, userId, isDouble);
-      await loadPlayers(); // This will refresh all counters
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
+      calculateTournamentStats(data.registrations || []);
       setError(null);
     } catch (err) {
       console.error('Rebuy error:', err);
@@ -109,7 +160,10 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     if (!isStaff) return;
     try {
       await tournamentService.performAddon(tournamentId, userId);
-      await loadPlayers(); // This will refresh all counters
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
+      calculateTournamentStats(data.registrations || []);
       setError(null);
     } catch (err) {
       setError(err.message || 'Failed to process add-on');
@@ -126,7 +180,10 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
         newPlayer.email
       );
       setNewPlayer({ name: '', email: '' });
-      await loadPlayers();
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
+      calculateTournamentStats(data.registrations || []);
       setError(null);
     } catch (err) {
       setError(err.message || 'Failed to register player');
@@ -141,10 +198,26 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     try {
       await tournamentService.manualRegister(tournamentId, user.name, user.email);
       setSelectedUserId('');
-      await loadPlayers();
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
+      calculateTournamentStats(data.registrations || []);
       setError(null);
     } catch (err) {
       setError(err.message || 'Failed to register player');
+    }
+  };
+
+  const openSettlement = (player) => {
+    setSettlementPlayer(player);
+    setShowSettlement(true);
+  };
+
+  const closeSettlement = async (refresh = false) => {
+    setShowSettlement(false);
+    setSettlementPlayer(null);
+    if (refresh) {
+      await loadPlayers();
     }
   };
 
@@ -252,6 +325,7 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rebuys</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
               {(tournament?.rebuy?.allowed || tournament?.addon?.allowed) && (
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stack Options</th>
               )}
@@ -323,6 +397,19 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
                     )}
                   </div>
                 </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {player.rebuys_paid && (player.addon_used ? player.addon_paid : true) ? (
+                    <span className="text-green-600 font-medium">Paid</span>
+                  ) : (
+                    <button
+                      onClick={() => openSettlement(player)}
+                      className="px-3 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600"
+                    >
+                      Settle Up
+                    </button>
+                  )}
+                </td>
                 {(tournament?.rebuy?.allowed || tournament?.addon?.allowed) && (
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex space-x-2">
@@ -344,15 +431,7 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
                           </button>
                         </>
                       )}
-                      {tournament.addon?.allowed && !player.eliminated && !player.addon_used && (
-                        <button
-                          onClick={() => handleAddon(player.user_id)}
-                          className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-                          title={`Add ${tournament.addon.stack.toLocaleString()} chips for $${tournament.addon.price}`}
-                        >
-                          Add-on
-                        </button>
-                      )}
+                      
                     </div>
                   </td>
                 )}
@@ -361,6 +440,14 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
           </tbody>
         </table>
       </div>
+      {showSettlement && settlementPlayer && (
+        <SettlementModal
+          isOpen={showSettlement}
+          onClose={closeSettlement}
+          player={settlementPlayer}
+          tournament={tournament}
+        />
+      )}
     </div>
   );
 };

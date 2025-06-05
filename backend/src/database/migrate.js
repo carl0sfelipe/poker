@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const pool = require('../config/database');
+const supabase = require('../config/database');
 
 async function migrate() {
   try {
@@ -12,7 +12,8 @@ async function migrate() {
       if (file.endsWith('.sql')) {
         console.log(`Executing migration: ${file}`);
         const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-        await pool.query(sql);
+        const { error } = await supabase.rpc('exec_sql', { sql });
+        if (error) throw error;
         console.log(`Migration ${file} completed successfully`);
       }
     }
