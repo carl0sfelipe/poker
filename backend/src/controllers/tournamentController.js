@@ -734,6 +734,72 @@ const tournamentController = {
     }
   },
 
+  async settlePayment(req, res) {
+    try {
+      const { id: tournamentId } = req.params;
+      const { userId, confirmPayment, includeAddon } = req.body;
+
+      const { data: registration, error: regError } = await supabase
+        .from('registrations')
+        .select('*')
+        .eq('tournament_id', tournamentId)
+        .eq('user_id', userId)
+        .single();
+
+      if (regError) throw regError;
+      if (!registration) {
+        return res.status(404).json({ error: 'Registration not found' });
+      }
+
+      if (!confirmPayment) {
+        const { data, error } = await supabase
+          .from('registrations')
+          .update({ payment_status: 'eliminated', eliminated: true })
+          .eq('id', registration.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return res.json(data);
+      }
+
+      const updates = {
+        rebuys_paid: true,
+        payment_status: 'paid',
+        payment_timestamp: new Date().toISOString()
+      };
+
+      if (registration.addon_used && !registration.addon_paid) {
+        updates.addon_paid = true;
+      }
+
+      if (includeAddon && !registration.addon_used) {
+        const { data: tournament, error: tError } = await supabase
+          .from('tournaments')
+          .select('addon')
+          .eq('id', tournamentId)
+          .single();
+        if (tError) throw tError;
+        updates.current_stack = registration.current_stack + tournament.addon.stack;
+        updates.addon_used = true;
+        updates.addon_paid = true;
+      }
+
+      const { data, error } = await supabase
+        .from('registrations')
+        .update(updates)
+        .eq('id', registration.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.json(data);
+    } catch (error) {
+      console.error('Settle payment error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
   async delete(req, res) {
     try {
       const { id } = req.params;
