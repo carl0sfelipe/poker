@@ -20,6 +20,8 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
   const [settlementPlayer, setSettlementPlayer] = useState(null);
   const [showSettlement, setShowSettlement] = useState(false);
   const isStaff = authService.isStaff();
+  // Referência para manter a ordem original dos jogadores
+  const [originalOrder, setOriginalOrder] = useState([]);
 
   useEffect(() => {
     if (!isStaff) {
@@ -60,11 +62,50 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     setTournamentStats(stats);
   };
 
+  // Função auxiliar para ordenar jogadores
+  const sortPlayers = (players) => {
+    return [...players].sort((a, b) => b.id - a.id);  // Ordena pelo ID do registro em ordem decrescente
+  };
+
+  const maintainOrder = (newPlayers) => {
+    // Se é a primeira carga, define a ordem original
+    if (originalOrder.length === 0) {
+      const orderIds = newPlayers.map(p => p.id);
+      setOriginalOrder(orderIds);
+      return newPlayers;
+    }
+
+    // Mantém a ordem original e adiciona novos jogadores no topo
+    const orderedPlayers = [];
+    const newPlayerIds = new Set(newPlayers.map(p => p.id));
+    const oldPlayerIds = new Set(originalOrder);
+
+    // Adiciona novos jogadores no topo
+    newPlayers.forEach(player => {
+      if (!oldPlayerIds.has(player.id)) {
+        orderedPlayers.push(player);
+      }
+    });
+
+    // Adiciona jogadores existentes na ordem original
+    originalOrder.forEach(id => {
+      if (newPlayerIds.has(id)) {
+        const player = newPlayers.find(p => p.id === id);
+        if (player) {
+          orderedPlayers.push(player);
+        }
+      }
+    });
+
+    return orderedPlayers;
+  };
+
   const loadPlayers = async () => {
     try {
       const data = await tournamentService.getById(tournamentId);
       setTournament(data);
-      setPlayers(data.registrations || []);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
       calculateTournamentStats(data.registrations || []);
       setLoading(false);
     } catch (err) {
@@ -77,7 +118,9 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     if (!isStaff) return;
     try {
       await tournamentService.checkIn(tournamentId, userId);
-      await loadPlayers(); // Refresh data after check-in
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
       setError(null);
     } catch (err) {
       console.error('Check-in error:', err);
@@ -89,7 +132,9 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     if (!isStaff) return;
     try {
       await tournamentService.eliminatePlayer(tournamentId, userId);
-      await loadPlayers(); // Refresh data after elimination
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
       setError(null);
     } catch (err) {
       setError('Failed to eliminate player');
@@ -100,7 +145,10 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     if (!isStaff) return;
     try {
       await tournamentService.performRebuy(tournamentId, userId, isDouble);
-      await loadPlayers(); // This will refresh all counters
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
+      calculateTournamentStats(data.registrations || []);
       setError(null);
     } catch (err) {
       console.error('Rebuy error:', err);
@@ -112,7 +160,10 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     if (!isStaff) return;
     try {
       await tournamentService.performAddon(tournamentId, userId);
-      await loadPlayers(); // This will refresh all counters
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
+      calculateTournamentStats(data.registrations || []);
       setError(null);
     } catch (err) {
       setError(err.message || 'Failed to process add-on');
@@ -129,7 +180,10 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
         newPlayer.email
       );
       setNewPlayer({ name: '', email: '' });
-      await loadPlayers();
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
+      calculateTournamentStats(data.registrations || []);
       setError(null);
     } catch (err) {
       setError(err.message || 'Failed to register player');
@@ -144,7 +198,10 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     try {
       await tournamentService.manualRegister(tournamentId, user.name, user.email);
       setSelectedUserId('');
-      await loadPlayers();
+      const data = await tournamentService.getById(tournamentId);
+      const orderedPlayers = maintainOrder(data.registrations || []);
+      setPlayers(orderedPlayers);
+      calculateTournamentStats(data.registrations || []);
       setError(null);
     } catch (err) {
       setError(err.message || 'Failed to register player');
@@ -374,15 +431,7 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
                           </button>
                         </>
                       )}
-                      {tournament.addon?.allowed && !player.eliminated && !player.addon_used && (
-                        <button
-                          onClick={() => handleAddon(player.user_id)}
-                          className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-                          title={`Add ${tournament.addon.stack.toLocaleString()} chips for $${tournament.addon.price}`}
-                        >
-                          Add-on
-                        </button>
-                      )}
+                      
                     </div>
                   </td>
                 )}
