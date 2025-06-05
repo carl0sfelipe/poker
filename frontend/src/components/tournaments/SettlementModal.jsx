@@ -120,14 +120,7 @@ const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => handleSettlement(false)}
-                disabled={isProcessing}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Eliminate Player
-              </button>
+            <div className="flex justify-end mt-6">
               <button
                 onClick={() => handleSettlement(true)}
                 disabled={isProcessing}
