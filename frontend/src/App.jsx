@@ -21,16 +21,16 @@ function App() {
   const [user, setUser] = useState(authService.getUser());
 
   useEffect(() => {
-    // Atualiza o estado quando o token mudar
-    const checkAuth = () => {
+    const handleStorage = () => {
       setIsAuthenticated(authService.isAuthenticated());
       setUser(authService.getUser());
     };
 
-    // Verifica a autenticação a cada segundo
-    const interval = setInterval(checkAuth, 1000);
+    // Atualiza quando localStorage mudar (ex.: login/logout em outra aba)
+    window.addEventListener('storage', handleStorage);
 
-    return () => clearInterval(interval);
+    // Limpeza
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const handleLogout = () => {
