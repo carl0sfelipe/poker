@@ -154,7 +154,7 @@ const CreateTournament = () => {
           name: bonus.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s]/g, ""),
           stack: bonus.stack,
           price: bonus.price || 0,
-          condition: bonus.condition.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s\.,]/g, "")
+          condition: bonus.condition ? bonus.condition.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s\.,]/g, "") : ''
         }))
       };
       console.log('sanitizedFormData:', sanitizedFormData);

@@ -111,6 +111,25 @@ const tournamentController = {
         }
       }
 
+      // Garante que addon_bonuses sempre seja um array, mesmo se vier objeto do front
+      let formattedAddonBonuses = [];
+      if (addon && addon.bonus) {
+        if (Array.isArray(addon.bonus)) {
+          formattedAddonBonuses = addon.bonus.map(bonus => ({
+            name: String(bonus.name || '').trim().replace(/[^a-zA-Z0-9\s]/g, ''),
+            stack: Number(bonus.stack),
+            price: Number(bonus.price || 0)
+          }));
+        } else if (typeof addon.bonus === 'object') {
+          const bonus = addon.bonus;
+          formattedAddonBonuses = [{
+            name: String(bonus.name || '').trim().replace(/[^a-zA-Z0-9\s]/g, ''),
+            stack: Number(bonus.stack),
+            price: Number(bonus.price || 0)
+          }];
+        }
+      }
+
       // Format bonus data - ensure it's a proper JSONB array
       const formattedBonuses = bonuses.map(bonus => ({
         name: String(bonus.name || '').trim().replace(/[^a-zA-Z0-9\s]/g, ''),
@@ -139,14 +158,6 @@ const tournamentController = {
         }
       };
 
-      // Format addon bonuses
-      const formattedAddonBonuses = (addonBonuses || []).map(bonus => ({
-        name: String(bonus.name || '').trim().replace(/[^a-zA-Z0-9\s]/g, ''),
-        stack: Number(bonus.stack),
-        price: Number(bonus.price || 0),
-        condition: String(bonus.condition || '').trim()
-      }));
-
       // Normalize blind structure
       const normalizedBlindStructure = blind_structure.map(level => ({
         level: parseInt(level.level),
@@ -167,11 +178,14 @@ const tournamentController = {
         addon: formattedAddon,
         rebuy: formattedRebuy,
         buy_in: parseInt(buy_in || 0),
-        addon_bonuses: formattedAddonBonuses // <-- novo campo
+        addon_bonuses: formattedAddonBonuses
       };
 
       // Log only the bonuses field for debugging
       console.log('Bonuses to be sent:', JSON.stringify(tournamentData.bonuses));
+
+      // LOG ÚNICO PARA DEBUG: GITHUB COPILOT DEBUG - DADOS ENVIADOS PARA O SUPABASE
+      console.log('GITHUB COPILOT DEBUG - DADOS ENVIADOS PARA O SUPABASE:', JSON.stringify(tournamentData, null, 2));
 
       try {
         const { data, error } = await supabase
@@ -199,15 +213,8 @@ const tournamentController = {
         });
       }
     } catch (error) {
-      console.error('Create tournament error:', {
-        error,
-        message: error.message,
-        stack: error.stack,
-        details: error.details || 'No additional details'
-      });
-      
-      res.status(500).json({ 
-        error: 'Internal server error', 
+      res.status(500).json({
+        error: 'Internal server error',
         message: error.message,
         details: error.details || error.hint || 'No additional details',
         type: error.constructor.name
@@ -256,11 +263,6 @@ const tournamentController = {
           user_name: reg.user.name || reg.user.email.split('@')[0], // Fallback to email username if name is not set
           user_email: reg.user.email
         }));
-      }
-
-      // Garante que addon_bonuses sempre seja array
-      if (data && !Array.isArray(data.addon_bonuses)) {
-        data.addon_bonuses = [];
       }
 
       // Trata especificamente o erro PGRST116 (nenhuma linha encontrada)
@@ -341,19 +343,21 @@ const tournamentController = {
         }
       });
 
+      const registrationData = {
+        id: uuidv4(),
+        user_id: userId,
+        tournament_id: tournamentId,
+        checked_in: false,
+        current_stack: totalStack,
+        selected_bonuses: selectedBonuses,
+        rebuys: [],
+        addon_used: false
+      };
+      console.log('Registration to be inserted:', JSON.stringify(registrationData, null, 2));
       const { data, error } = await supabase
         .from('registrations')
         .insert([
-          {
-            id: uuidv4(),
-            user_id: userId,
-            tournament_id: tournamentId,
-            checked_in: false,
-            current_stack: totalStack,
-            selected_bonuses: selectedBonuses,
-            rebuys: [],
-            addon_used: false
-          }
+          registrationData
         ])
         .select()
         .single();
@@ -465,19 +469,21 @@ const tournamentController = {
         }
       });
 
+      const registrationData = {
+        id: uuidv4(),
+        user_id: user.id,
+        tournament_id: tournamentId,
+        checked_in: false,
+        current_stack: totalStack,
+        selected_bonuses: selectedBonuses,
+        rebuys: [],
+        addon_used: false
+      };
+      console.log('Manual registration to be inserted:', JSON.stringify(registrationData, null, 2));
       const { data, error } = await supabase
         .from('registrations')
         .insert([
-          {
-            id: uuidv4(),
-            user_id: user.id,
-            tournament_id: tournamentId,
-            checked_in: false,
-            current_stack: totalStack,
-            selected_bonuses: selectedBonuses,
-            rebuys: [],
-            addon_used: false
-          }
+          registrationData
         ])
         .select()
         .single();
@@ -527,16 +533,17 @@ const tournamentController = {
         stack: rebuyStack
       };
 
-      // Update registration with new stack, rebuy record, and increment counter
+      const updateData = {
+        current_stack: newStack,
+        rebuys: [...(registration.rebuys || []), newRebuy],
+        single_rebuys: isDouble ? (registration.single_rebuys || 0) : (registration.single_rebuys || 0) + 1,
+        double_rebuys: isDouble ? (registration.double_rebuys || 0) + 1 : (registration.double_rebuys || 0),
+        last_rebuy_level: tournament.current_level || 1
+      };
+      console.log('Rebuy update to be sent:', JSON.stringify(updateData, null, 2));
       const { data, error } = await supabase
         .from('registrations')
-        .update({ 
-          current_stack: newStack,
-          rebuys: [...(registration.rebuys || []), newRebuy],
-          single_rebuys: isDouble ? (registration.single_rebuys || 0) : (registration.single_rebuys || 0) + 1,
-          double_rebuys: isDouble ? (registration.double_rebuys || 0) + 1 : (registration.double_rebuys || 0),
-          last_rebuy_level: tournament.current_level || 1
-        })
+        .update(updateData)
         .eq('tournament_id', tournamentId)
         .eq('user_id', userId)
         .select()
@@ -581,12 +588,14 @@ const tournamentController = {
 
       const newStack = registration.current_stack + tournament.addon.stack;
 
+      const updateData = {
+        current_stack: newStack,
+        addon_used: true
+      };
+      console.log('Addon update to be sent:', JSON.stringify(updateData, null, 2));
       const { data, error } = await supabase
         .from('registrations')
-        .update({ 
-          current_stack: newStack,
-          addon_used: true
-        })
+        .update(updateData)
         .eq('tournament_id', tournamentId)
         .eq('user_id', userId)
         .select()
@@ -605,9 +614,11 @@ const tournamentController = {
       const { id: tournamentId } = req.params;
       const { userId } = req.body;
 
+      const updateData = { checked_in: true };
+      console.log('Check-in update to be sent:', JSON.stringify(updateData, null, 2));
       const { data, error } = await supabase
         .from('registrations')
-        .update({ checked_in: true })
+        .update(updateData)
         .eq('tournament_id', tournamentId)
         .eq('user_id', userId)
         .select()
@@ -644,13 +655,15 @@ const tournamentController = {
       // Determine elimination order but do not set final position yet
       const eliminationOrder = eliminatedPlayers + 1;
 
+      const updateData = {
+        eliminated: true,
+        elimination_order: eliminationOrder,
+        finish_place: null
+      };
+      console.log('Elimination update to be sent:', JSON.stringify(updateData, null, 2));
       const { data, error } = await supabase
         .from('registrations')
-        .update({
-          eliminated: true,
-          elimination_order: eliminationOrder,
-          finish_place: null
-        })
+        .update(updateData)
         .eq('tournament_id', tournamentId)
         .eq('user_id', userId)
         .select()
@@ -873,6 +886,7 @@ const tournamentController = {
         updates.addon_paid = true;
       }
 
+      console.log('Settle payment update to be sent:', JSON.stringify(updates, null, 2));
       const { data, error } = await supabase
         .from('registrations')
         .update(updates)
@@ -1022,13 +1036,15 @@ const tournamentController = {
       const newStack = registration.current_stack + stackDelta;
 
       // Atualiza o registro com as novas contagens de rebuy e o stack ajustado
+      const updateData = {
+        single_rebuys: singleRebuys,
+        double_rebuys: doubleRebuys,
+        current_stack: newStack
+      };
+      console.log('Update rebuy count to be sent:', JSON.stringify(updateData, null, 2));
       const { data, error } = await supabase
         .from('registrations')
-        .update({ 
-          single_rebuys: singleRebuys,
-          double_rebuys: doubleRebuys,
-          current_stack: newStack
-        })
+        .update(updateData)
         .eq('tournament_id', tournamentId)
         .eq('user_id', userId)
         .select()

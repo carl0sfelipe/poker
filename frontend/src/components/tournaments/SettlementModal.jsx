@@ -270,15 +270,15 @@ const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
             {/* Add-on Bonuses exclusivos */}
             {tournament.addon_bonuses && tournament.addon_bonuses.length > 0 && includeAddon && (
               <div className="mt-4">
-                <div className="font-medium mb-2 text-blue-900">Bônus exclusivos do Add-on</div>
+                <div className="font-sm">Bônus Add-on</div>
                 <div className="space-y-2">
                   {tournament.addon_bonuses.map(bonus => (
-                    <div key={bonus.name} className="flex items-center justify-between bg-blue-50 p-2 rounded">
+                    <div key={bonus.name} className="flex items-center justify-between bg-gray-50 p-2 rounded">
                       <div>
                         <div className="font-medium">{bonus.name}</div>
-                        <div className="text-xs text-blue-600">+{bonus.stack.toLocaleString()} chips</div>
+                        <div className="text-xs text-gray-600">+{bonus.stack.toLocaleString()} chips</div>
                       </div>
-                      <div className="text-blue-600 text-sm mr-4">
+                      <div className="text-green-600 text-sm mr-4">
                         R$ {bonus.price || 0}
                       </div>
                       <div className="flex items-center space-x-2">
