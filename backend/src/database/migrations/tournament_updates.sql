@@ -16,7 +16,8 @@ ADD COLUMN IF NOT EXISTS rebuy JSONB DEFAULT '{
     "stack": 0,
     "price": 0
   }
-}';
+}',
+ADD COLUMN IF NOT EXISTS addon_bonuses JSONB DEFAULT '[]';
 
 -- Adicionando novas colunas na tabela registrations
 ALTER TABLE registrations
@@ -116,4 +117,4 @@ DROP TRIGGER IF EXISTS validate_addon_before_save ON tournaments;
 CREATE TRIGGER validate_addon_before_save
   BEFORE INSERT OR UPDATE ON tournaments
   FOR EACH ROW
-  EXECUTE FUNCTION validate_addon_structure(); 
+  EXECUTE FUNCTION validate_addon_structure();

@@ -50,37 +50,60 @@ function roundToNiceNumber(number) {
   return Math.round(number / 100000) * 100000;
 }
 
+const defaultBonuses = [
+  { 
+    name: 'Bonus Staff', 
+    stack: 5000, 
+    price: 10, 
+    condition: 'Staff autorizado',
+    addon: {
+      stack: 25000,
+      price: 10
+    }
+  },
+  { name: 'Bonus Horario', stack: 2000, price: 0, condition: 'Check-in antes do horario' },
+  { name: 'Bonus Pix Antecipado', stack: 2000, price: 0, condition: 'Pagamento via Pix antecipado' }
+];
+
 const CreateTournament = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     start_time: '',
-    starting_stack: 10000,
-    blind_structure: getRecommendedStructure(10000).levels,
-    blind_mode: 'preset', // 'preset' ou 'custom'
-    bonuses: [],
-    break_level: 6, // Nível padrão para o intervalo
-    addon: {
-      allowed: false,
-      stack: 0,
-      price: 0
-    },
+    starting_stack: 20000, // Alterado para 20.000
+    blind_structure: getRecommendedStructure(20000).levels,
+    blind_mode: 'preset',
+    bonuses: defaultBonuses, // Três bônus padrão
+    break_level: 6,
     rebuy: {
-      allowed: false,
-      max_stack_for_single: 0,
-      single: {
-        stack: 0,
-        price: 0
-      },
-      double: {
-        stack: 0,
-        price: 0
-      }
-    }
+      allowed: true,
+      max_stack_for_single: 20000,  // <-- Valor padrão alterado para 20000
+      single: { stack: 20000, price: 50 },
+      double_enabled: false, // toggle para rebuy duplo
+      double: { stack: 45000, price: 100 }
+    },
+    addon: {
+      allowed: true,
+      stack: 75000,
+      price: 50,
+      bonus_enabled: true, // toggle para bônus no addon
+      bonus: { price: 10, stack: 25000 }
+    },
+    buy_in: 0,
   });
   const [error, setError] = useState(null);
   const [selectedPreset, setSelectedPreset] = useState('small');
-  const [newBonus, setNewBonus] = useState({ name: '', stack: 0, condition: '' });
+  const [newBonus, setNewBonus] = useState({ 
+    name: '', 
+    stack: 0, 
+    price: 0, 
+    condition: '',
+    hasAddon: false,
+    addonStack: 0,
+    addonPrice: 0
+  });
+  const [addonBonuses, setAddonBonuses] = useState([]);
+  const [newAddonBonus, setNewAddonBonus] = useState({ name: '', stack: 0, price: 0, condition: '' });
   const [currentPage, setCurrentPage] = useState(1);
   const levelsPerPage = 10;
 
@@ -99,6 +122,9 @@ const CreateTournament = () => {
     e.preventDefault();
     setError(null);
 
+    // Debug: veja o conteúdo do array de bônus de add-on antes do submit
+    console.log('addonBonuses antes do submit:', addonBonuses);
+
     // Validar estrutura de blinds
     const validation = validateBlindStructure(formData.blind_structure, formData.starting_stack);
     if (!validation.valid) {
@@ -115,7 +141,25 @@ const CreateTournament = () => {
         }
       }
 
-      const response = await tournamentService.create(formData);
+      // Sanitiza os nomes e condições dos bônus para remover acentos e caracteres especiais
+      const sanitizedFormData = {
+        ...formData,
+        bonuses: formData.bonuses.map(bonus => ({
+          name: bonus.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s]/g, ""),
+          stack: bonus.stack,
+          condition: bonus.condition.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s\.,]/g, ""),
+          price: bonus.price || 0
+        })),
+        addon_bonuses: addonBonuses.map(bonus => ({
+          name: bonus.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s]/g, ""),
+          stack: bonus.stack,
+          price: bonus.price || 0,
+          condition: bonus.condition.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s\.,]/g, "")
+        }))
+      };
+      console.log('sanitizedFormData:', sanitizedFormData);
+
+      const response = await tournamentService.create(sanitizedFormData);
       navigate(`/tournaments/${response.id}`);
     } catch (err) {
       setError(err.message);
@@ -174,34 +218,39 @@ const CreateTournament = () => {
   };
 
   const handleBonusAdd = () => {
-    // Validate name (3+ alphanumeric chars)
-    const validName = newBonus.name.trim().length >= 3 && /^[a-zA-Z0-9\s]+$/.test(newBonus.name.trim());
+    // Limpa caracteres especiais do nome
+    const cleanedName = newBonus.name.trim().replace(/[^a-zA-Z0-9\s]/g, '');
     
-    // Validate condition (5+ chars)
+    // Validações adicionais
+    const validName = cleanedName.length >= 3;
     const validCondition = newBonus.condition.trim().length >= 5;
-    
-    // Validate stack (positive number)
     const validStack = Number.isInteger(newBonus.stack) && newBonus.stack > 0;
 
     if (!validName || !validCondition || !validStack) {
       setError(
         'Bônus inválido: ' +
-        (!validName ? 'Nome deve ter pelo menos 3 caracteres alfanuméricos. ' : '') +
+        (!validName ? 'Nome deve ter pelo menos 3 caracteres alfanuméricos (sem acentos ou caracteres especiais). ' : '') +
         (!validCondition ? 'Condição deve ter pelo menos 5 caracteres. ' : '') +
         (!validStack ? 'Stack deve ser um número positivo.' : '')
       );
       return;
     }
 
+    // Adiciona o bônus com o nome limpo
     setFormData(prev => ({
       ...prev,
       bonuses: [...prev.bonuses, {
-        name: newBonus.name.trim(),
+        name: cleanedName,
         stack: parseInt(newBonus.stack),
-        condition: newBonus.condition.trim()
+        price: parseInt(newBonus.price) || 0,
+        condition: newBonus.condition.trim(),
+        addon: newBonus.hasAddon ? {
+          stack: parseInt(newBonus.addonStack) || 0,
+          price: parseInt(newBonus.addonPrice) || 0
+        } : undefined
       }]
     }));
-    setNewBonus({ name: '', stack: 0, condition: '' });
+    setNewBonus({ name: '', stack: 0, price: 0, condition: '', hasAddon: false, addonStack: 0, addonPrice: 0 });
     setError(null);
   };
 
@@ -210,6 +259,33 @@ const CreateTournament = () => {
       ...formData,
       bonuses: formData.bonuses.filter((_, i) => i !== index)
     });
+  };
+
+  const handleAddonBonusAdd = () => {
+    const cleanedName = newAddonBonus.name.trim().replace(/[^a-zA-Z0-9\s]/g, '');
+    const validName = cleanedName.length >= 3;
+    const validCondition = newAddonBonus.condition.trim().length >= 5;
+    const validStack = Number.isInteger(newAddonBonus.stack) && newAddonBonus.stack > 0;
+    if (!validName || !validCondition || !validStack) {
+      setError(
+        'Bônus de add-on inválido: ' +
+        (!validName ? 'Nome deve ter pelo menos 3 caracteres alfanuméricos. ' : '') +
+        (!validCondition ? 'Condição deve ter pelo menos 5 caracteres. ' : '') +
+        (!validStack ? 'Stack deve ser um número positivo.' : '')
+      );
+      return;
+    }
+    setAddonBonuses(prev => ([...prev, {
+      name: cleanedName,
+      stack: parseInt(newAddonBonus.stack),
+      price: parseInt(newAddonBonus.price) || 0,
+      condition: newAddonBonus.condition.trim()
+    }]));
+    setNewAddonBonus({ name: '', stack: 0, price: 0, condition: '' });
+    setError(null);
+  };
+  const handleAddonBonusRemove = (index) => {
+    setAddonBonuses(addonBonuses.filter((_, i) => i !== index));
   };
 
   const handleRebuyToggle = (checked) => {
@@ -285,6 +361,19 @@ const CreateTournament = () => {
             step="1000"
             value={formData.starting_stack}
             onChange={(e) => handleNumberChange(e.target.value, 'starting_stack')}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Buy-in (R$)</label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={formData.buy_in}
+            onChange={(e) => setFormData({ ...formData, buy_in: parseInt(e.target.value) })}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             required
           />
@@ -459,37 +548,54 @@ const CreateTournament = () => {
         <div className="space-y-6 mt-8">
           <div className="border-t pt-6">
             <h3 className="text-lg font-medium mb-4">Opções de Bônus</h3>
+            {/* Bônus normais */}
             <div className="grid grid-cols-1 gap-4 mb-4">
-              <div className="flex gap-4">
-                <input
-                  type="text"
-                  placeholder="Nome do Bônus"
-                  value={newBonus.name}
-                  onChange={(e) => setNewBonus({ ...newBonus, name: e.target.value })}
-                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
-                <input
-                  type="number"
-                  placeholder="Quantidade de Fichas"
-                  value={newBonus.stack || ''}
-                  onChange={(e) => setNewBonus({ ...newBonus, stack: parseInt(e.target.value) || 0 })}
-                  className="w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  min="1"
-                />
-                <input
-                  type="text"
-                  placeholder="Condição"
-                  value={newBonus.condition}
-                  onChange={(e) => setNewBonus({ ...newBonus, condition: e.target.value })}
-                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleBonusAdd}
-                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-                >
-                  Adicionar Bônus
-                </button>
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-4">
+                  <input
+                    type="text"
+                    placeholder="Nome do Bônus"
+                    value={newBonus.name}
+                    onChange={(e) => setNewBonus({ ...newBonus, name: e.target.value })}
+                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Quantidade de Fichas"
+                    value={newBonus.stack || ''}
+                    onChange={(e) => setNewBonus({ ...newBonus, stack: parseInt(e.target.value) || 0 })}
+                    className="w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    min="1"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Preço (R$)"
+                    value={newBonus.price || ''}
+                    onChange={(e) => setNewBonus({ ...newBonus, price: parseInt(e.target.value) || 0 })}
+                    className="w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    min="0"
+                  />
+                </div>
+                
+                <div className="flex gap-4">
+                  <input
+                    type="text"
+                    placeholder="Condição"
+                    value={newBonus.condition}
+                    onChange={(e) => setNewBonus({ ...newBonus, condition: e.target.value })}
+                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleBonusAdd}
+                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                  >
+                    Adicionar Bônus
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -503,13 +609,19 @@ const CreateTournament = () => {
                         <span className="font-medium">{bonus.name}</span>
                         <span className="mx-2">-</span>
                         <span>{bonus.stack.toLocaleString()} fichas</span>
+                        {bonus.price > 0 && (
+                          <>
+                            <span className="mx-2">-</span>
+                            <span className="text-green-600">R$ {bonus.price}</span>
+                          </>
+                        )}
                         <span className="mx-2">-</span>
                         <span className="text-gray-600">{bonus.condition}</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleBonusRemove(index)}
-                        className="text-red-600 hover:text-red-800"
+                        className="text-red-600 hover:text-red-800 ml-2"
                       >
                         Remover
                       </button>
@@ -518,6 +630,80 @@ const CreateTournament = () => {
                 </div>
               </div>
             )}
+            {/* BÔNUS DE ADD-ON */}
+            <div className="mt-8">
+              <h3 className="text-lg font-medium mb-4">Bônus de Add-on</h3>
+              <div className="flex gap-4 mb-2">
+                <input
+                  type="text"
+                  placeholder="Nome do Bônus"
+                  value={newAddonBonus.name}
+                  onChange={e => setNewAddonBonus({ ...newAddonBonus, name: e.target.value })}
+                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                <input
+                  type="number"
+                  placeholder="Fichas"
+                  value={newAddonBonus.stack || ''}
+                  onChange={e => setNewAddonBonus({ ...newAddonBonus, stack: parseInt(e.target.value) || 0 })}
+                  className="w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  min="1"
+                />
+                <input
+                  type="number"
+                  placeholder="Preço (R$)"
+                  value={newAddonBonus.price || ''}
+                  onChange={e => setNewAddonBonus({ ...newAddonBonus, price: parseInt(e.target.value) || 0 })}
+                  className="w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  min="0"
+                />
+                <input
+                  type="text"
+                  placeholder="Condição"
+                  value={newAddonBonus.condition}
+                  onChange={e => setNewAddonBonus({ ...newAddonBonus, condition: e.target.value })}
+                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddonBonusAdd}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Adicionar Bônus de Add-on
+                </button>
+              </div>
+              {addonBonuses.length > 0 && (
+                <div className="mt-2">
+                  <h4 className="text-sm font-medium mb-2">Bônus de Add-on Adicionados:</h4>
+                  <div className="space-y-2">
+                    {addonBonuses.map((bonus, index) => (
+                      <div key={index} className="flex items-center justify-between bg-blue-50 p-2 rounded">
+                        <div>
+                          <span className="font-medium">{bonus.name}</span>
+                          <span className="mx-2">-</span>
+                          <span>{bonus.stack.toLocaleString()} fichas</span>
+                          {bonus.price > 0 && (
+                            <>
+                              <span className="mx-2">-</span>
+                              <span className="text-blue-600">R$ {bonus.price}</span>
+                            </>
+                          )}
+                          <span className="mx-2">-</span>
+                          <span className="text-gray-600">{bonus.condition}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddonBonusRemove(index)}
+                          className="text-red-600 hover:text-red-800 ml-2"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="border-t pt-6">
@@ -548,12 +734,11 @@ const CreateTournament = () => {
                 <input
                   type="checkbox"
                   checked={formData.rebuy.allowed}
-                  onChange={(e) => handleRebuyToggle(e.target.checked)}
+                  onChange={e => setFormData({ ...formData, rebuy: { ...formData.rebuy, allowed: e.target.checked } })}
                   className="mr-2"
                 />
-                <span>Permitir Rebuys (até o nível do intervalo)</span>
+                <span>Permitir Rebuy Simples</span>
               </div>
-              
               {formData.rebuy.allowed && (
                 <>
                   <div>
@@ -614,43 +799,54 @@ const CreateTournament = () => {
                     </div>
                   </div>
 
-                  <div>
-                    <h4 className="text-md font-medium mb-2">Rebuy Duplo</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Quantidade de Fichas</label>
-                        <input
-                          type="number"
-                          value={formData.rebuy.double.stack}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            rebuy: {
-                              ...formData.rebuy,
-                              double: { ...formData.rebuy.double, stack: parseInt(e.target.value) }
-                            }
-                          })}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                          min="1"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Preço</label>
-                        <input
-                          type="number"
-                          value={formData.rebuy.double.price}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            rebuy: {
-                              ...formData.rebuy,
-                              double: { ...formData.rebuy.double, price: parseInt(e.target.value) }
-                            }
-                          })}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                          min="1"
-                        />
+                  <div className="flex items-center mt-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.rebuy.double_enabled}
+                      onChange={e => setFormData({ ...formData, rebuy: { ...formData.rebuy, double_enabled: e.target.checked } })}
+                      className="mr-2"
+                    />
+                    <span>Permitir Rebuy Duplo</span>
+                  </div>
+                  {formData.rebuy.double_enabled && (
+                    <div>
+                      <h4 className="text-md font-medium mb-2">Rebuy Duplo</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Quantidade de Fichas</label>
+                          <input
+                            type="number"
+                            value={formData.rebuy.double.stack}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              rebuy: {
+                                ...formData.rebuy,
+                                double: { ...formData.rebuy.double, stack: parseInt(e.target.value) }
+                              }
+                            })}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                            min="1"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Preço</label>
+                          <input
+                            type="number"
+                            value={formData.rebuy.double.price}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              rebuy: {
+                                ...formData.rebuy,
+                                double: { ...formData.rebuy.double, price: parseInt(e.target.value) }
+                              }
+                            })}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                            min="1"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </>
               )}
             </div>
@@ -663,14 +859,14 @@ const CreateTournament = () => {
                 <input
                   type="checkbox"
                   checked={formData.addon.allowed}
-                  onChange={(e) => handleAddonToggle(e.target.checked)}
+                  onChange={e => setFormData({ ...formData, addon: { ...formData.addon, allowed: e.target.checked } })}
                   className="mr-2"
                 />
                 <span>Permitir Add-on durante o intervalo</span>
               </div>
               
               {formData.addon.allowed && (
-                <div className="grid grid-cols-2 gap-4">
+                <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Quantidade de Fichas</label>
                     <input
@@ -687,23 +883,40 @@ const CreateTournament = () => {
                       min="1"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Preço</label>
+                  <div className="flex items-center mt-2">
                     <input
-                      type="number"
-                      value={formData.addon.price}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        addon: {
-                          ...formData.addon,
-                          price: parseInt(e.target.value)
-                        }
-                      })}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                      min="1"
+                      type="checkbox"
+                      checked={formData.addon.bonus_enabled}
+                      onChange={e => setFormData({ ...formData, addon: { ...formData.addon, bonus_enabled: e.target.checked } })}
+                      className="mr-2"
                     />
+                    <span>Permitir bônus no Add-on</span>
                   </div>
-                </div>
+                  {formData.addon.bonus_enabled && (
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Preço do Bônus (R$)</label>
+                        <input
+                          type="number"
+                          value={formData.addon.bonus.price}
+                          onChange={e => setFormData({ ...formData, addon: { ...formData.addon, bonus: { ...formData.addon.bonus, price: parseInt(e.target.value) } } })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                          min="1"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Fichas do Bônus</label>
+                        <input
+                          type="number"
+                          value={formData.addon.bonus.stack}
+                          onChange={e => setFormData({ ...formData, addon: { ...formData.addon, bonus: { ...formData.addon.bonus, stack: parseInt(e.target.value) } } })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                          min="1"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -729,4 +942,4 @@ const CreateTournament = () => {
   );
 };
 
-export default CreateTournament; 
+export default CreateTournament;

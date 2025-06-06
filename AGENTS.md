@@ -1,8 +1,23 @@
 # Poker Platform – Database Schema (public)
 
-> **Versão gerada automaticamente – *04 Jun 2025***
+> **Versão gerada automaticamente – *06 Jun 2025***
 >
-> Schema básico para o MVP do sistema de torneios de poker. Contém apenas três tabelas centrais (`users`, `tournaments`, `registrations`) e suas relações.
+> Este documento agora reflete o novo fluxo de trabalho para alterações no banco de dados e no sistema.
+
+---
+
+## Fluxo de trabalho para alterações
+
+### Modo "ask"
+1. Quando uma alteração for solicitada, será fornecido:
+   - Um script SQL para rodar no Supabase.
+   - Um resumo explicando o impacto da alteração.
+2. O script SQL deve ser executado no Supabase antes de aprovar a alteração.
+
+### Modo "agent"
+1. Após a aprovação, considera-se que o script SQL já foi executado no Supabase.
+2. As alterações no código serão feitas com base no novo estado do banco de dados.
+3. O `AGENTS.md` será atualizado para refletir as novas informações.
 
 ---
 
@@ -109,6 +124,50 @@ users ──┐             ┌──< registrations >── tournaments
 1. **Um usuário pode ter múltiplas inscrições** (`registrations`) em torneios diferentes, mas no MVP assumimos **uma inscrição por torneio**.
 2. **Pagamentos**: os campos `payment_status` e `payment_timestamp` registram a quitação de rebuy/addon; pagamentos parciais são controlados pelos flags `rebuys_paid` e `addon_paid`.
 3. **Runtime state** (blinds correntes, stacks etc.) é persistido diretamente nas tabelas para simplificar o MVP; versão futura deve mover para tabelas de histórico ou Redis.
+
+---
+
+## Scripts SQL para Supabase
+
+### Atualizar Preço dos Bônus
+
+Para adicionar ou atualizar o preço do bônus Staff em torneios existentes, use o script abaixo diretamente no console SQL do Supabase:
+
+```sql
+-- Script para adicionar preço (R$ 10) ao bônus Staff em todos os torneios existentes
+UPDATE tournaments
+SET bonuses = jsonb_set(
+  bonuses,
+  '{0}',
+  bonuses->0 || '{"price": 10}'::jsonb
+)
+WHERE 
+  bonuses->0->>'name' = 'Bonus Staff' 
+  AND (bonuses->0->>'price' IS NULL OR (bonuses->0->>'price')::int = 0);
+
+-- Adiciona preço 0 aos outros bônus caso não tenham
+UPDATE tournaments
+SET bonuses = jsonb_set(
+  bonuses,
+  '{1}',
+  bonuses->1 || '{"price": 0}'::jsonb
+)
+WHERE 
+  bonuses->1->>'name' = 'Bonus Horario'
+  AND bonuses->1->>'price' IS NULL;
+
+UPDATE tournaments
+SET bonuses = jsonb_set(
+  bonuses,
+  '{2}',
+  bonuses->2 || '{"price": 0}'::jsonb
+)
+WHERE 
+  bonuses->2->>'name' = 'Bonus Pix Antecipado'
+  AND bonuses->2->>'price' IS NULL;
+```
+
+**Observação:** Este projeto utiliza o Supabase diretamente, sem migrações tradicionais. Execute esses scripts diretamente no console SQL do Supabase quando necessário atualizar a estrutura ou dados existentes.
 
 ---
 

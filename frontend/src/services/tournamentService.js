@@ -69,7 +69,8 @@ const tournamentService = {
           ...tournamentData.addon,
           stack: parseInt(tournamentData.addon.stack),
           price: parseInt(tournamentData.addon.price)
-        }
+        },
+        buy_in: parseInt(tournamentData.buy_in)
       };
 
       console.log('Formatted tournament data:', JSON.stringify(formattedData, null, 2));
@@ -226,6 +227,20 @@ const tournamentService = {
     }
   },
 
+  async updateRebuyCount(tournamentId, userId, { singleRebuys, doubleRebuys }) {
+    try {
+      const response = await axios.post(`${API_URL}/tournaments/${tournamentId}/update-rebuys`, {
+        userId,
+        singleRebuys,
+        doubleRebuys
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Update rebuy count error:', error);
+      throw this._handleError(error);
+    }
+  },
+
   _handleError(error) {
     console.error('API Error:', {
       error,
@@ -255,4 +270,4 @@ const tournamentService = {
   }
 };
 
-export default tournamentService; 
+export default tournamentService;

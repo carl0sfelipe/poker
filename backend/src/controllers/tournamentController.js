@@ -28,7 +28,9 @@ const tournamentController = {
             stack: 0,
             price: 0
           }
-        }
+        },
+        buy_in,
+        addonBonuses = [] // <-- novo campo
       } = req.body;
 
       // Validate required fields
@@ -113,6 +115,7 @@ const tournamentController = {
       const formattedBonuses = bonuses.map(bonus => ({
         name: String(bonus.name || '').trim().replace(/[^a-zA-Z0-9\s]/g, ''),
         stack: Number(bonus.stack),
+        price: Number(bonus.price || 0),
         condition: String(bonus.condition || '').trim()
       }));
 
@@ -136,6 +139,14 @@ const tournamentController = {
         }
       };
 
+      // Format addon bonuses
+      const formattedAddonBonuses = (addonBonuses || []).map(bonus => ({
+        name: String(bonus.name || '').trim().replace(/[^a-zA-Z0-9\s]/g, ''),
+        stack: Number(bonus.stack),
+        price: Number(bonus.price || 0),
+        condition: String(bonus.condition || '').trim()
+      }));
+
       // Normalize blind structure
       const normalizedBlindStructure = blind_structure.map(level => ({
         level: parseInt(level.level),
@@ -154,7 +165,9 @@ const tournamentController = {
         status: 'pending',
         bonuses: formattedBonuses, // Send as array of objects
         addon: formattedAddon,
-        rebuy: formattedRebuy
+        rebuy: formattedRebuy,
+        buy_in: parseInt(buy_in || 0),
+        addon_bonuses: formattedAddonBonuses // <-- novo campo
       };
 
       // Log only the bonuses field for debugging
@@ -243,6 +256,11 @@ const tournamentController = {
           user_name: reg.user.name || reg.user.email.split('@')[0], // Fallback to email username if name is not set
           user_email: reg.user.email
         }));
+      }
+
+      // Garante que addon_bonuses sempre seja array
+      if (data && !Array.isArray(data.addon_bonuses)) {
+        data.addon_bonuses = [];
       }
 
       // Trata especificamente o erro PGRST116 (nenhuma linha encontrada)
@@ -737,7 +755,14 @@ const tournamentController = {
   async settlePayment(req, res) {
     try {
       const { id: tournamentId } = req.params;
-      const { userId, confirmPayment, includeAddon } = req.body;
+      const { 
+        userId, 
+        confirmPayment, 
+        includeAddon, 
+        includeBuyIn, 
+        selectedBonuses = [],
+        selectedBonusAddons = [] 
+      } = req.body;
 
       const { data: registration, error: regError } = await supabase
         .from('registrations')
@@ -769,18 +794,81 @@ const tournamentController = {
         payment_timestamp: new Date().toISOString()
       };
 
+      // Processar pagamento do buy-in
+      if (includeBuyIn) {
+        updates.buy_in_paid = true;
+      }
+
+      // Obter dados do torneio para informações sobre os bônus e seus addons
+      const { data: tournament } = await supabase
+        .from('tournaments')
+        .select('bonuses, addon')
+        .eq('id', tournamentId)
+        .single();
+
+      // Processar pagamento dos bônus
+      if (selectedBonuses && selectedBonuses.length > 0) {
+        // Manter os bônus que o jogador já tinha e adicionar os novos
+        const currentBonuses = registration.selected_bonuses || [];
+        const allBonuses = [...new Set([...currentBonuses, ...selectedBonuses])];
+        
+        // Atualizar quais bônus estão marcados como pagos
+        const paidBonuses = registration.bonuses_paid || [];
+        updates.selected_bonuses = allBonuses;
+        updates.bonuses_paid = [...new Set([...paidBonuses, ...selectedBonuses])];
+        
+        // Recalcular o stack adicionando os novos bônus selecionados
+        // Adicionar stack apenas para novos bônus selecionados
+        const newBonuses = selectedBonuses.filter(bonus => !currentBonuses.includes(bonus));
+        let additionalStack = 0;
+        
+        if (tournament && tournament.bonuses) {
+          newBonuses.forEach(bonusName => {
+            const bonus = tournament.bonuses.find(b => b.name === bonusName);
+            if (bonus) {
+              additionalStack += bonus.stack;
+            }
+          });
+        }
+        
+        if (additionalStack > 0) {
+          updates.current_stack = (registration.current_stack || 0) + additionalStack;
+        }
+      }
+
+      // Processar os addons de bônus
+      if (selectedBonusAddons && selectedBonusAddons.length > 0) {
+        const currentBonusAddons = registration.bonus_addons_used || [];
+        const newBonusAddons = selectedBonusAddons.filter(addon => !currentBonusAddons.includes(addon));
+        
+        // Verificar se existem novos addons de bônus e adicionar suas fichas ao stack
+        if (newBonusAddons.length > 0 && tournament?.bonuses) {
+          let addonAdditionalStack = 0;
+          
+          newBonusAddons.forEach(bonusName => {
+            const bonus = tournament.bonuses.find(b => b.name === bonusName);
+            if (bonus && bonus.addon) {
+              addonAdditionalStack += bonus.addon.stack;
+            }
+          });
+          
+          // Atualizar o stack atual com as fichas adicionais dos addons de bônus
+          if (addonAdditionalStack > 0) {
+            updates.current_stack = (updates.current_stack || registration.current_stack || 0) + addonAdditionalStack;
+          }
+          
+          // Atualizar a lista de addons de bônus usados
+          updates.bonus_addons_used = [...new Set([...currentBonusAddons, ...newBonusAddons])];
+        }
+      }
+
+      // Processar pagamento e uso do addon padrão do torneio
       if (registration.addon_used && !registration.addon_paid) {
         updates.addon_paid = true;
       }
 
-      if (includeAddon && !registration.addon_used) {
-        const { data: tournament, error: tError } = await supabase
-          .from('tournaments')
-          .select('addon')
-          .eq('id', tournamentId)
-          .single();
-        if (tError) throw tError;
-        updates.current_stack = registration.current_stack + tournament.addon.stack;
+      if (includeAddon && !registration.addon_used && tournament?.addon?.allowed) {
+        updates.current_stack = (updates.current_stack || registration.current_stack || 0) + tournament.addon.stack;
         updates.addon_used = true;
         updates.addon_paid = true;
       }
@@ -880,7 +968,83 @@ const tournamentController = {
       console.error('Delete tournament error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
-  }
+  },
+
+  async updateRebuyCount(req, res) {
+    try {
+      const { id: tournamentId } = req.params;
+      const { userId, singleRebuys, doubleRebuys } = req.body;
+
+      // Validações básicas
+      if (singleRebuys < 0 || doubleRebuys < 0) {
+        return res.status(400).json({ error: 'Rebuy counts cannot be negative' });
+      }
+
+      // Verifica se a inscrição existe
+      const { data: registration, error: regError } = await supabase
+        .from('registrations')
+        .select('*')
+        .eq('tournament_id', tournamentId)
+        .eq('user_id', userId)
+        .single();
+
+      if (regError) {
+        console.error('Registration query error:', regError);
+        return res.status(404).json({ error: 'Registration not found' });
+      }
+
+      // Não permite editar se o pagamento já foi confirmado
+      if (registration.rebuys_paid) {
+        return res.status(400).json({ error: 'Cannot edit rebuy counts after payment has been settled' });
+      }
+
+      // Calcula a diferença no stack por causa da mudança na quantidade de rebuys
+      const { data: tournament, error: tournamentError } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('id', tournamentId)
+        .single();
+
+      if (tournamentError) {
+        console.error('Tournament query error:', tournamentError);
+        return res.status(404).json({ error: 'Tournament not found' });
+      }
+
+      // Recalcula o stack com base nas novas contagens de rebuy
+      const oldSingleStack = (registration.single_rebuys || 0) * tournament.rebuy.single.stack;
+      const oldDoubleStack = (registration.double_rebuys || 0) * tournament.rebuy.double.stack;
+      
+      const newSingleStack = singleRebuys * tournament.rebuy.single.stack;
+      const newDoubleStack = doubleRebuys * tournament.rebuy.double.stack;
+      
+      // Calcula o delta para ajustar o stack atual
+      const stackDelta = (newSingleStack + newDoubleStack) - (oldSingleStack + oldDoubleStack);
+      const newStack = registration.current_stack + stackDelta;
+
+      // Atualiza o registro com as novas contagens de rebuy e o stack ajustado
+      const { data, error } = await supabase
+        .from('registrations')
+        .update({ 
+          single_rebuys: singleRebuys,
+          double_rebuys: doubleRebuys,
+          current_stack: newStack
+        })
+        .eq('tournament_id', tournamentId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Update rebuy count error:', error);
+        return res.status(500).json({ error: 'Failed to update rebuy counts' });
+      }
+
+      res.json(data);
+    } catch (error) {
+      console.error('Update rebuy count error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
 };
 
-module.exports = tournamentController; 
+module.exports = tournamentController;

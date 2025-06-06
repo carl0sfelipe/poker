@@ -28,5 +28,11 @@ router.post(
   checkRole(['admin', 'staff']),
   tournamentController.settlePayment
 );
+router.post(
+  '/:id/update-rebuys',
+  auth,
+  checkRole(['admin', 'staff']),
+  tournamentController.updateRebuyCount
+);
 
 module.exports = router;

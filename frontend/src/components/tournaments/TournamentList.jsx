@@ -94,6 +94,25 @@ const TournamentList = () => {
                 Stack: {tournament.starting_stack.toLocaleString()}
               </p>
               <p className="text-gray-600">
+                <span className="font-medium">Buy-in:</span> R$ {tournament.buy_in}
+              </p>
+              
+              {/* Mostrar informação dos bônus */}
+              {tournament.bonuses && tournament.bonuses.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-gray-600 font-medium">Bonuses:</p>
+                  <ul className="text-sm text-gray-500 ml-4 mt-1">
+                    {tournament.bonuses.map((bonus, idx) => (
+                      <li key={idx}>
+                        {bonus.name} (+{bonus.stack.toLocaleString()} chips)
+                        {bonus.price > 0 && <span className="text-green-600"> - R$ {bonus.price}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              <p className="text-gray-600 mt-2">
                 Status: <span className="capitalize">{tournament.status}</span>
               </p>
             </Link>
@@ -104,4 +123,4 @@ const TournamentList = () => {
   );
 };
 
-export default TournamentList; 
+export default TournamentList;

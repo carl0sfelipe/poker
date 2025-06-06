@@ -22,6 +22,13 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
   const isStaff = authService.isStaff();
   // Referência para manter a ordem original dos jogadores
   const [originalOrder, setOriginalOrder] = useState([]);
+  
+  // Novos estados para o modal de confirmação de check-in
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [pendingRebuy, setPendingRebuy] = useState({
+    userId: null,
+    isDouble: false
+  });
 
   useEffect(() => {
     if (!isStaff) {
@@ -75,28 +82,30 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
       return newPlayers;
     }
 
-    // Mantém a ordem original e adiciona novos jogadores no topo
+    // Mantém a ordem original independente das alterações de stack
     const orderedPlayers = [];
-    const newPlayerIds = new Set(newPlayers.map(p => p.id));
-    const oldPlayerIds = new Set(originalOrder);
-
-    // Adiciona novos jogadores no topo
-    newPlayers.forEach(player => {
-      if (!oldPlayerIds.has(player.id)) {
-        orderedPlayers.push(player);
-      }
-    });
-
-    // Adiciona jogadores existentes na ordem original
+    const newPlayersMap = new Map(newPlayers.map(p => [p.id, p]));
+    
+    // Primeiro adiciona os jogadores existentes na ordem original
     originalOrder.forEach(id => {
-      if (newPlayerIds.has(id)) {
-        const player = newPlayers.find(p => p.id === id);
-        if (player) {
-          orderedPlayers.push(player);
-        }
+      if (newPlayersMap.has(id)) {
+        orderedPlayers.push(newPlayersMap.get(id));
+        newPlayersMap.delete(id);
       }
     });
-
+    
+    // Adiciona quaisquer novos jogadores que não estavam na ordem original
+    if (newPlayersMap.size > 0) {
+      const newIds = [];
+      newPlayersMap.forEach((player) => {
+        orderedPlayers.push(player);
+        newIds.push(player.id);
+      });
+      
+      // Atualiza a ordem original para incluir os novos jogadores
+      setOriginalOrder([...newIds, ...originalOrder]);
+    }
+    
     return orderedPlayers;
   };
 
@@ -104,8 +113,28 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     try {
       const data = await tournamentService.getById(tournamentId);
       setTournament(data);
-      const orderedPlayers = maintainOrder(data.registrations || []);
-      setPlayers(orderedPlayers);
+      
+      // Mantém a ordem original, a menos que um campeão tenha sido coroado
+      const hasChampion = (data.registrations || []).some(player => player.finish_place === 1);
+      
+      // Se tiver um campeão, reordena os jogadores pelo finish_place
+      if (hasChampion) {
+        const sortedPlayers = [...data.registrations].sort((a, b) => {
+          // Campeão primeiro, depois por posição final (menor número = melhor posição)
+          if (a.finish_place && b.finish_place) return a.finish_place - b.finish_place;
+          if (a.finish_place) return -1; // Jogadores com posição ficam no topo
+          if (b.finish_place) return 1;
+          return 0; // Mantém ordem original para jogadores sem posição final
+        });
+        setPlayers(sortedPlayers);
+        // Atualiza a ordem original apenas quando há campeão
+        setOriginalOrder(sortedPlayers.map(p => p.id));
+      } else {
+        // Se não tem campeão, mantém a ordem original ou define se for a primeira carga
+        const orderedPlayers = maintainOrder(data.registrations || []);
+        setPlayers(orderedPlayers);
+      }
+      
       calculateTournamentStats(data.registrations || []);
       setLoading(false);
     } catch (err) {
@@ -119,8 +148,14 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     try {
       await tournamentService.checkIn(tournamentId, userId);
       const data = await tournamentService.getById(tournamentId);
-      const orderedPlayers = maintainOrder(data.registrations || []);
-      setPlayers(orderedPlayers);
+      
+      // Atualiza apenas os dados dos jogadores mantendo a ordem original
+      const updatedPlayers = players.map(player => {
+        const updatedPlayer = data.registrations.find(r => r.id === player.id);
+        return updatedPlayer || player;
+      });
+      
+      setPlayers(updatedPlayers);
       setError(null);
     } catch (err) {
       console.error('Check-in error:', err);
@@ -132,9 +167,8 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     if (!isStaff) return;
     try {
       await tournamentService.eliminatePlayer(tournamentId, userId);
-      const data = await tournamentService.getById(tournamentId);
-      const orderedPlayers = maintainOrder(data.registrations || []);
-      setPlayers(orderedPlayers);
+      // Após eliminação, recarrega completamente para verificar se há campeão
+      await loadPlayers();
       setError(null);
     } catch (err) {
       setError('Failed to eliminate player');
@@ -146,8 +180,14 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     try {
       await tournamentService.performRebuy(tournamentId, userId, isDouble);
       const data = await tournamentService.getById(tournamentId);
-      const orderedPlayers = maintainOrder(data.registrations || []);
-      setPlayers(orderedPlayers);
+      
+      // Atualiza apenas os dados dos jogadores mantendo a ordem original
+      const updatedPlayers = players.map(player => {
+        const updatedPlayer = data.registrations.find(r => r.id === player.id);
+        return updatedPlayer || player;
+      });
+      
+      setPlayers(updatedPlayers);
       calculateTournamentStats(data.registrations || []);
       setError(null);
     } catch (err) {
@@ -161,8 +201,14 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     try {
       await tournamentService.performAddon(tournamentId, userId);
       const data = await tournamentService.getById(tournamentId);
-      const orderedPlayers = maintainOrder(data.registrations || []);
-      setPlayers(orderedPlayers);
+      
+      // Atualiza apenas os dados dos jogadores mantendo a ordem original
+      const updatedPlayers = players.map(player => {
+        const updatedPlayer = data.registrations.find(r => r.id === player.id);
+        return updatedPlayer || player;
+      });
+      
+      setPlayers(updatedPlayers);
       calculateTournamentStats(data.registrations || []);
       setError(null);
     } catch (err) {
@@ -219,6 +265,66 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     if (refresh) {
       await loadPlayers();
     }
+  };
+
+  // Função modificada para verificar check-in antes de fazer rebuy
+  const handleRebuyClick = (player, isDouble = false) => {
+    if (!isStaff) return;
+    
+    // Se o jogador já fez check-in, faz rebuy direto
+    if (player.checked_in) {
+      handleRebuy(player.user_id, isDouble);
+    } else {
+      // Se não, mostra o modal perguntando se quer fazer check-in primeiro
+      setPendingRebuy({
+        userId: player.user_id,
+        isDouble
+      });
+      setShowCheckInModal(true);
+    }
+  };
+
+  // Função para lidar com a confirmação do modal de check-in
+  const handleCheckInConfirm = async () => {
+    try {
+      // Primeiro faz o check-in
+      await tournamentService.checkIn(tournamentId, pendingRebuy.userId);
+      
+      // Depois faz o rebuy
+      await tournamentService.performRebuy(tournamentId, pendingRebuy.userId, pendingRebuy.isDouble);
+      
+      // Atualiza os dados
+      const data = await tournamentService.getById(tournamentId);
+      
+      // Atualiza apenas os dados dos jogadores mantendo a ordem original
+      const updatedPlayers = players.map(player => {
+        const updatedPlayer = data.registrations.find(r => r.id === player.id);
+        return updatedPlayer || player;
+      });
+      
+      setPlayers(updatedPlayers);
+      calculateTournamentStats(data.registrations || []);
+      setError(null);
+    } catch (err) {
+      console.error('Check-in + Rebuy error:', err);
+      setError(err.message || 'Failed to check in and rebuy');
+    } finally {
+      // Fecha o modal e limpa o estado pendente
+      setShowCheckInModal(false);
+      setPendingRebuy({
+        userId: null,
+        isDouble: false
+      });
+    }
+  };
+
+  // Função para cancelar a operação de check-in + rebuy
+  const handleCheckInCancel = () => {
+    setShowCheckInModal(false);
+    setPendingRebuy({
+      userId: null,
+      isDouble: false
+    });
   };
 
   if (!isStaff) return null;
@@ -314,6 +420,32 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
       ) : (
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-6">
           Registrations are closed. A champion has been crowned.
+        </div>
+      )}
+
+      {/* Modal de confirmação para fazer check-in antes do rebuy */}
+      {showCheckInModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 className="text-lg font-bold mb-4">Check-in necessário</h3>
+            <p className="mb-4">
+              O jogador precisa fazer check-in antes de realizar rebuy. Deseja fazer check-in e rebuy agora?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleCheckInCancel}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCheckInConfirm}
+                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+              >
+                Fazer Check-in e Rebuy
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -416,14 +548,14 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
                       {tournament.rebuy?.allowed && !player.eliminated && (
                         <>
                           <button
-                            onClick={() => handleRebuy(player.user_id, false)}
+                            onClick={() => handleRebuyClick(player, false)}
                             className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
                             title={`Add ${tournament.rebuy.single.stack.toLocaleString()} chips for $${tournament.rebuy.single.price}`}
                           >
                             Single Rebuy
                           </button>
                           <button
-                            onClick={() => handleRebuy(player.user_id, true)}
+                            onClick={() => handleRebuyClick(player, true)}
                             className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
                             title={`Add ${tournament.rebuy.double.stack.toLocaleString()} chips for $${tournament.rebuy.double.price}`}
                           >
@@ -452,4 +584,4 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
   );
 };
 
-export default PlayerManagement; 
+export default PlayerManagement;

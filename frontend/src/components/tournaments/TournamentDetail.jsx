@@ -30,6 +30,8 @@ const TournamentDetail = () => {
     try {
       setError(null);
       const data = await tournamentService.getById(id);
+      console.log('Tournament data received:', JSON.stringify(data));
+      console.log('Bonuses structure:', JSON.stringify(data.bonuses, null, 2));
       setTournament(data);
 
       setHasChampion(
@@ -229,6 +231,9 @@ const TournamentDetail = () => {
                   Starting Stack: {tournament.starting_stack.toLocaleString()}
                 </p>
                 <p className="text-gray-600">
+                  Buy-in: R$ {tournament.buy_in}
+                </p>
+                <p className="text-gray-600">
                   Status: <span className="capitalize">{tournament.status}</span>
                 </p>
 
@@ -236,18 +241,36 @@ const TournamentDetail = () => {
                 <div className="mt-6 space-y-6">
                   {/* Bonus Information */}
                   {tournament.bonuses && tournament.bonuses.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-3">Available Bonuses</h3>
-                      <div className="space-y-2">
-                        {tournament.bonuses.map((bonus, index) => (
-                          <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                            <div className="font-medium text-gray-900">{bonus.name}</div>
-                            <div className="text-sm text-gray-600">Stack: +{bonus.stack.toLocaleString()} chips</div>
-                            <div className="text-sm text-gray-500">Condition: {bonus.condition}</div>
-                          </div>
-                        ))}
+                    <>
+                      <div>
+                        <h3 className="text-lg font-medium mb-3">Bônus no Buy-in</h3>
+                        <div className="space-y-2">
+                          {tournament.bonuses.filter(b => !b.addon_bonus).map((bonus, index) => (
+                            <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                              <div className="font-medium text-gray-900">{bonus.name}</div>
+                              <div className="text-sm text-gray-600">Stack: +{bonus.stack.toLocaleString()} chips</div>
+                              <div className="text-sm text-green-600">Price: R$ {bonus.price || 0}</div>
+                              <div className="text-sm text-gray-500">Condition: {bonus.condition}</div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                      {tournament.bonuses.some(b => b.addon_bonus) && (
+                        <div>
+                          <h3 className="text-lg font-medium mb-3">Bônus disponíveis no Add-on</h3>
+                          <div className="space-y-2">
+                            {tournament.bonuses.filter(b => b.addon_bonus).map((bonus, index) => (
+                              <div key={index} className="bg-blue-50 p-3 rounded-lg">
+                                <div className="font-medium text-blue-900">{bonus.name}</div>
+                                <div className="text-sm text-blue-600">Stack: +{bonus.addon_bonus.stack.toLocaleString()} chips</div>
+                                <div className="text-sm text-blue-600">Preço: R$ {bonus.addon_bonus.price || 0}</div>
+                                <div className="text-sm text-gray-500">Condição: {bonus.addon_bonus.condition || 'Disponível apenas no add-on'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* Add-on Information */}
@@ -256,7 +279,7 @@ const TournamentDetail = () => {
                       <h3 className="text-lg font-medium mb-3">Add-on Option</h3>
                       <div className="bg-gray-50 p-3 rounded-lg">
                         <div className="text-sm text-gray-600">Stack: +{tournament.addon.stack.toLocaleString()} chips</div>
-                        <div className="text-sm text-gray-600">Price: ${tournament.addon.price}</div>
+                        <div className="text-sm text-gray-600">Price: R$ {tournament.addon.price}</div>
                       </div>
                     </div>
                   )}
@@ -269,13 +292,30 @@ const TournamentDetail = () => {
                         <div className="bg-gray-50 p-3 rounded-lg">
                           <div className="font-medium text-gray-900">Single Rebuy</div>
                           <div className="text-sm text-gray-600">Stack: +{tournament.rebuy.single.stack.toLocaleString()} chips</div>
-                          <div className="text-sm text-gray-600">Price: ${tournament.rebuy.single.price}</div>
+                          <div className="text-sm text-gray-600">Price: R$ {tournament.rebuy.single.price}</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg">
                           <div className="font-medium text-gray-900">Double Rebuy</div>
                           <div className="text-sm text-gray-600">Stack: +{tournament.rebuy.double.stack.toLocaleString()} chips</div>
-                          <div className="text-sm text-gray-600">Price: ${tournament.rebuy.double.price}</div>
+                          <div className="text-sm text-gray-600">Price: R$ {tournament.rebuy.double.price}</div>
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Add-on Bonuses Information */}
+                  {tournament.addon_bonuses && tournament.addon_bonuses.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-3">Bônus exclusivos do Add-on</h3>
+                      <div className="space-y-2">
+                        {tournament.addon_bonuses.map((bonus, index) => (
+                          <div key={index} className="bg-blue-50 p-3 rounded-lg">
+                            <div className="font-medium text-blue-900">{bonus.name}</div>
+                            <div className="text-sm text-blue-600">Stack: +{bonus.stack.toLocaleString()} chips</div>
+                            <div className="text-sm text-blue-600">Preço: R$ {bonus.price || 0}</div>
+                            <div className="text-sm text-gray-500">Condição: {bonus.condition || 'Disponível apenas no add-on'}</div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -411,4 +451,4 @@ const TournamentDetail = () => {
   );
 };
 
-export default TournamentDetail; 
+export default TournamentDetail;
