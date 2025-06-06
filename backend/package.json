@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "migrate": "node scripts/run_migration.js"
+    "migrate": "node scripts/run_migration.js",
+    "postinstall": "npm rebuild bcrypt"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.9",
