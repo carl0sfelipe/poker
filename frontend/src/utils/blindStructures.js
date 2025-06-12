@@ -159,4 +159,8 @@ const validateBlindStructure = (structure, startingStack) => {
   return { valid: true };
 };
 
-export { BLIND_STRUCTURES, getRecommendedStructure, validateBlindStructure }; 
+export {
+  BLIND_STRUCTURES,
+  getRecommendedStructure,
+  validateBlindStructure
+};

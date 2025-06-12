@@ -20,6 +20,7 @@ router.post('/:id/checkin', auth, checkRole(['admin', 'staff']), tournamentContr
 router.post('/:id/eliminate', auth, checkRole(['admin', 'staff']), tournamentController.eliminate);
 router.get('/:id/export', auth, checkRole(['admin', 'staff']), tournamentController.exportResults);
 router.post('/:id/delete', auth, checkRole(['admin', 'staff']), tournamentController.delete);
+router.delete('/:id', auth, checkRole(['admin', 'staff']), tournamentController.delete);
 router.post('/:id/rebuy', auth, checkRole(['admin', 'staff']), tournamentController.addRebuy);
 router.post('/:id/addon', auth, checkRole(['admin', 'staff']), tournamentController.addAddon);
 router.post(

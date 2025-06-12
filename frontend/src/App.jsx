@@ -7,6 +7,7 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import StaffRoute from './components/auth/StaffRoute';
 import authService from './services/authService';
+import useAuthValidation from './hooks/useAuthValidation';
 
 // Componente para proteger rotas que requerem autenticação
 const ProtectedRoute = ({ children }) => {
@@ -20,18 +21,29 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
   const [user, setUser] = useState(authService.getUser());
 
+  // Hook para validar token periodicamente (a cada 5 minutos)
+  useAuthValidation(5);
+
   useEffect(() => {
     // Atualiza o estado quando o token mudar
     const checkAuth = () => {
-      setIsAuthenticated(authService.isAuthenticated());
-      setUser(authService.getUser());
+      const authenticated = authService.isAuthenticated();
+      const currentUser = authService.getUser();
+      
+      if (authenticated !== isAuthenticated) {
+        setIsAuthenticated(authenticated);
+      }
+      
+      if (JSON.stringify(currentUser) !== JSON.stringify(user)) {
+        setUser(currentUser);
+      }
     };
 
     // Verifica a autenticação a cada segundo
     const interval = setInterval(checkAuth, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated, user]);
 
   const handleLogout = () => {
     authService.logout();

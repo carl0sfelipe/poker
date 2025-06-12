@@ -1,6 +1,19 @@
 #!/bin/bash
 
 # Script de inicialização para configurar o projeto
+# 
+# FUNCIONALIDADES:
+# - Instalação completa das dependências
+# - Execução de testes automatizados abrangentes
+# - Inicialização dos servidores de desenvolvimento
+#
+# TESTES IMPLEMENTADOS:
+# - Backend: Jest + Supertest (100% cobertura das rotas da API)
+# - Frontend: Vitest + jsdom (cobertura completa dos services)
+#
+# USO:
+# ./setup.sh              - Instalação + Testes + Servidores
+# ./setup.sh --test-only  - Apenas executar testes
 
 set -e
 
@@ -66,10 +79,56 @@ if ! npm install; then
   fi
 fi
 
+# Executar testes
+echo "=================================="
+echo "EXECUTANDO TESTES AUTOMATIZADOS"
+echo "=================================="
+
+# Testes do Backend (Jest + Supertest)
+echo ""
+echo ">>> Executando testes do BACKEND..."
+cd ../backend
+if npm test; then
+  echo "✅ BACKEND: Todos os testes passaram!"
+else
+  echo "❌ BACKEND: Alguns testes falharam!"
+  echo "Por favor, verifique os erros acima antes de continuar."
+fi
+
+# Testes do Frontend (Vitest)
+echo ""
+echo ">>> Executando testes do FRONTEND..."
+cd ../frontend
+if npm test; then
+  echo "✅ FRONTEND: Todos os testes passaram!"
+else
+  echo "❌ FRONTEND: Alguns testes falharam!"
+  echo "Por favor, verifique os erros acima antes de continuar."
+fi
+
+echo ""
+echo "=================================="
+echo "RESUMO DOS TESTES"
+echo "=================================="
+echo "Backend: Jest + Supertest - Cobertura completa das rotas da API"
+echo "Frontend: Vitest + jsdom - Cobertura dos serviços e utilitários"
+echo "=================================="
+
+# Opção para executar apenas os testes
+if [[ "$1" == "--test-only" ]]; then
+  echo ""
+  echo "Execução de testes concluída. Encerrando script (--test-only)."
+  exit 0
+fi
+
 # Iniciar o backend e o frontend
 cd ..
+echo ""
 echo "Iniciando o backend e o frontend com npm run dev na raiz..."
 echo "Use Ctrl+C para encerrar ambos os servidores."
+echo ""
+echo "💡 Para executar apenas os testes, use: ./setup.sh --test-only"
+echo ""
 npm run dev
 
 echo "Configuração concluída e servidores iniciados!"

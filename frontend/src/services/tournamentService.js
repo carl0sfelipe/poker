@@ -3,20 +3,6 @@ import authService from './authService';
 
 const API_URL = '/api';
 
-// Configurar o interceptor para adicionar o token em todas as requisições
-axios.interceptors.request.use(
-  (config) => {
-    const token = authService.getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
 const tournamentService = {
   async list() {
     try {
@@ -252,12 +238,30 @@ const tournamentService = {
 
     if (error.response) {
       // O servidor respondeu com um status de erro
+      const status = error.response.status;
       const message = error.response.data?.message || 
                      error.response.data?.error || 
                      error.response.statusText || 
                      'An error occurred';
+      
+      // Tratamento específico para erros de autenticação
+      if (status === 401) {
+        const authError = new Error('Sessão expirada. Por favor, faça login novamente.');
+        authError.status = 401;
+        authError.data = error.response.data;
+        return authError;
+      }
+      
+      // Tratamento específico para erros de autorização
+      if (status === 403) {
+        const authError = new Error('Você não tem permissão para realizar esta ação.');
+        authError.status = 403;
+        authError.data = error.response.data;
+        return authError;
+      }
+      
       const customError = new Error(message);
-      customError.status = error.response.status;
+      customError.status = status;
       customError.data = error.response.data;
       return customError;
     } else if (error.request) {

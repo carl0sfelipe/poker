@@ -327,251 +327,438 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
     });
   };
 
-  if (!isStaff) return null;
-  if (loading) return <div className="text-center p-4">Loading players...</div>;
-  if (error) return (
-    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-      <strong className="font-bold">Error: </strong>
-      <span className="block sm:inline">{error}</span>
-      <button
-        className="absolute top-0 bottom-0 right-0 px-4 py-3"
-        onClick={() => setError(null)}
-      >
-        <span className="sr-only">Dismiss</span>
-        <svg className="h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-          <title>Close</title>
-          <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
-        </svg>
-      </button>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <span className="ml-3 text-gray-600">Carregando jogadores...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isStaff) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+        <div className="flex items-center">
+          <svg className="w-5 h-5 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.582 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <span className="text-red-800 font-medium">Acesso não autorizado</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Filtrar usuários que já estão registrados no torneio
+  const registeredUserIds = players.map(player => player.user_id);
+  const availableUsers = existingUsers.filter(user => !registeredUserIds.includes(user.id));
 
   return (
-    <div className="mt-8">
-      <h2 className="text-2xl font-bold mb-4">Player Management</h2>
-      
-      {/* Tournament Stats */}
-      <div className="bg-gray-50 p-4 rounded-lg mb-6 grid grid-cols-3 gap-4">
-        <div className="text-center">
-          <div className="text-lg font-semibold text-blue-600">{tournamentStats.totalSingleRebuys}</div>
-          <div className="text-sm text-gray-600">Total Single Rebuys</div>
+    <div className="space-y-8">
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 text-red-400 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-red-800">Erro</h3>
+              <p className="mt-1 text-sm text-red-700">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-400 hover:text-red-600 transition-colors duration-200"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
-        <div className="text-center">
-          <div className="text-lg font-semibold text-purple-600">{tournamentStats.totalDoubleRebuys}</div>
-          <div className="text-sm text-gray-600">Total Double Rebuys</div>
+      )}
+
+      {/* Header Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
+          <h2 className="text-2xl font-bold text-white flex items-center">
+            <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Gerenciamento de Jogadores
+          </h2>
+          <p className="text-indigo-100 mt-2">Total de {players.length} jogadores registrados</p>
         </div>
-        <div className="text-center">
-          <div className="text-lg font-semibold text-yellow-600">{tournamentStats.totalAddons}</div>
-          <div className="text-sm text-gray-600">Total Add-ons</div>
+
+        {/* Tournament Stats */}
+        <div className="grid grid-cols-3 divide-x divide-gray-200 bg-gray-50">
+          <div className="px-6 py-4 text-center">
+            <div className="text-2xl font-bold text-blue-600">{tournamentStats.totalSingleRebuys}</div>
+            <div className="text-sm text-gray-600 font-medium">Rebuys Simples</div>
+          </div>
+          <div className="px-6 py-4 text-center">
+            <div className="text-2xl font-bold text-purple-600">{tournamentStats.totalDoubleRebuys}</div>
+            <div className="text-sm text-gray-600 font-medium">Rebuys Duplos</div>
+          </div>
+          <div className="px-6 py-4 text-center">
+            <div className="text-2xl font-bold text-yellow-600">{tournamentStats.totalAddons}</div>
+            <div className="text-sm text-gray-600 font-medium">Add-ons</div>
+          </div>
         </div>
       </div>
 
-      {/* Manual Registration */}
+      {/* Add Player Section */}
       {!registrationClosed ? (
-        <div className="bg-white p-4 rounded-lg mb-6">
-          <h3 className="text-lg font-medium mb-2">Add Player</h3>
-          <div className="space-y-2">
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                placeholder="Name"
-                value={newPlayer.name}
-                onChange={(e) => setNewPlayer({ ...newPlayer, name: e.target.value })}
-                className="border rounded px-2 py-1"
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={newPlayer.email}
-                onChange={(e) =>
-                  setNewPlayer({ ...newPlayer, email: e.target.value })
-                }
-                className="border rounded px-2 py-1"
-              />
-              <button
-                onClick={handleManualRegister}
-                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Add
-              </button>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+            <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+            Adicionar Jogador
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Manual Registration */}
+            <div className="space-y-4">
+              <h4 className="font-medium text-gray-900 border-b border-gray-200 pb-2">Novo Jogador</h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
+                  <input
+                    type="text"
+                    placeholder="Digite o nome do jogador"
+                    value={newPlayer.name}
+                    onChange={(e) => setNewPlayer({ ...newPlayer, name: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    placeholder="Digite o email do jogador"
+                    value={newPlayer.email}
+                    onChange={(e) => setNewPlayer({ ...newPlayer, email: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                  />
+                </div>
+                <button
+                  onClick={handleManualRegister}
+                  disabled={!newPlayer.name || !newPlayer.email}
+                  className="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Registrar Novo Jogador
+                </button>
+              </div>
             </div>
-            <div className="flex space-x-2">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="border rounded px-2 py-1 flex-grow"
-              >
-                <option value="">Select existing user</option>
-                {existingUsers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={handleRegisterExisting}
-                className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-              >
-                Register
-              </button>
+
+            {/* Existing User Registration */}
+            <div className="space-y-4">
+              <h4 className="font-medium text-gray-900 border-b border-gray-200 pb-2">Usuário Existente</h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Selecionar Usuário</label>
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => setSelectedUserId(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                  >
+                    <option value="">
+                      {availableUsers.length === 0 
+                        ? "Todos os usuários já estão registrados" 
+                        : "Selecione um usuário existente"
+                      }
+                    </option>
+                    {availableUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name} ({user.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={handleRegisterExisting}
+                  disabled={!selectedUserId || availableUsers.length === 0}
+                  className="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  Registrar Usuário
+                </button>
+              </div>
+              
+              {availableUsers.length === 0 && existingUsers.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-blue-400 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="text-sm text-blue-700">
+                      <p className="font-medium">Todos os usuários já estão registrados</p>
+                      <p className="mt-1">Para adicionar mais jogadores, use o formulário de "Novo Jogador".</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       ) : (
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-6">
-          Registrations are closed. A champion has been crowned.
-        </div>
-      )}
-
-      {/* Modal de confirmação para fazer check-in antes do rebuy */}
-      {showCheckInModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h3 className="text-lg font-bold mb-4">Check-in necessário</h3>
-            <p className="mb-4">
-              O jogador precisa fazer check-in antes de realizar rebuy. Deseja fazer check-in e rebuy agora?
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={handleCheckInCancel}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleCheckInConfirm}
-                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-              >
-                Fazer Check-in e Rebuy
-              </button>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+          <div className="flex items-center">
+            <svg className="w-6 h-6 text-yellow-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.582 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div>
+              <h3 className="text-lg font-semibold text-yellow-800">Registros Encerrados</h3>
+              <p className="text-yellow-700 mt-1">O torneio foi finalizado e um campeão foi coroado.</p>
             </div>
           </div>
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rebuys</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
-              {(tournament?.rebuy?.allowed || tournament?.addon?.allowed) && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stack Options</th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {players.map((player) => (
-              <tr key={player.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {player.user_name || player.user_email.split('@')[0]}
-                  </div>
-                  <div className="text-sm text-gray-500">{player.user_email}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    Stack: {player.current_stack.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {player.checked_in ? 'Checked In' : 'Not Checked In'}
-                  </div>
-                  {player.eliminated && (
-                    <div className="text-sm font-medium">
-                      {player.finish_place === 1 ? (
-                        <span className="text-yellow-600">🏆 Champion</span>
-                      ) : (
-                        <span className="text-gray-600">
-                          {player.finish_place}º Place
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {!player.eliminated && player.checked_in && (
-                    <div className="text-sm text-green-600">
-                      Still Playing
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    Single: {player.single_rebuys || 0}
-                  </div>
-                  <div className="text-sm text-gray-900">
-                    Double: {player.double_rebuys || 0}
-                  </div>
-                  {tournament?.addon?.allowed && (
-                    <div className="text-sm text-gray-900">
-                      Add-on: {player.addon_used ? 1 : 0}
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex space-x-2">
-                    {!player.checked_in && (
-                      <button
-                        onClick={() => handleCheckIn(player.user_id)}
-                        className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-                      >
-                        Check In
-                      </button>
-                    )}
-                    {player.checked_in && !player.eliminated && (
-                      <button
-                        onClick={() => handleEliminate(player.user_id)}
-                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                      >
-                        Eliminate
-                      </button>
-                    )}
-                  </div>
-                </td>
+      {/* Check-in Modal */}
+      {showCheckInModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0">
+                  <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.582 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="ml-3 text-lg font-semibold text-gray-900">Check-in Necessário</h3>
+              </div>
+              <p className="text-gray-600 mb-6">
+                O jogador precisa fazer check-in antes de realizar rebuy. Deseja fazer check-in e rebuy agora?
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={handleCheckInCancel}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCheckInConfirm}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+                >
+                  Fazer Check-in e Rebuy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {player.rebuys_paid && (player.addon_used ? player.addon_paid : true) ? (
-                    <span className="text-green-600 font-medium">Paid</span>
-                  ) : (
-                    <button
-                      onClick={() => openSettlement(player)}
-                      className="px-3 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600"
-                    >
-                      Settle Up
-                    </button>
-                  )}
-                </td>
+      {/* Players Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Lista de Jogadores ({players.length})
+          </h3>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Jogador
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status & Stack
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Rebuys & Add-ons
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ações
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Pagamento
+                </th>
                 {(tournament?.rebuy?.allowed || tournament?.addon?.allowed) && (
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex space-x-2">
-                      {tournament.rebuy?.allowed && !player.eliminated && (
-                        <>
-                          <button
-                            onClick={() => handleRebuyClick(player, false)}
-                            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                            title={`Add ${tournament.rebuy.single.stack.toLocaleString()} chips for $${tournament.rebuy.single.price}`}
-                          >
-                            Single Rebuy
-                          </button>
-                          <button
-                            onClick={() => handleRebuyClick(player, true)}
-                            className="px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
-                            title={`Add ${tournament.rebuy.double.stack.toLocaleString()} chips for $${tournament.rebuy.double.price}`}
-                          >
-                            Double Rebuy
-                          </button>
-                        </>
-                      )}
-                      
-                    </div>
-                  </td>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Opções de Stack
+                  </th>
                 )}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {players.map((player, index) => (
+                <tr key={player.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold ${
+                          player.finish_place === 1 ? 'bg-yellow-500' :
+                          player.eliminated ? 'bg-red-500' :
+                          player.checked_in ? 'bg-green-500' : 'bg-gray-400'
+                        }`}>
+                          {player.finish_place === 1 ? '🏆' : 
+                           (player.user_name || player.user_email).charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {player.user_name || player.user_email.split('@')[0]}
+                        </div>
+                        <div className="text-sm text-gray-500">{player.user_email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="space-y-1">
+                      <div className="text-sm font-semibold text-gray-900">
+                        Stack: {player.current_stack.toLocaleString()}
+                      </div>
+                      <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        player.eliminated ? 
+                          (player.finish_place === 1 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') :
+                        player.checked_in ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {player.eliminated ? 
+                          (player.finish_place === 1 ? 'Campeão' : `${player.finish_place}º Lugar`) :
+                          (player.checked_in ? 'Jogando' : 'Aguardando Check-in')
+                        }
+                      </div>
+                    </div>
+                  </td>
+                  
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="space-y-1">
+                      <div className="text-sm text-gray-900">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2">
+                          Simples: {player.single_rebuys || 0}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-900">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mr-2">
+                          Duplo: {player.double_rebuys || 0}
+                        </span>
+                      </div>
+                      {tournament?.addon?.allowed && (
+                        <div className="text-sm text-gray-900">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            player.addon_used ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            Add-on: {player.addon_used ? '✓' : '✗'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex space-x-2">
+                      {!player.checked_in && (
+                        <button
+                          onClick={() => handleCheckIn(player.user_id)}
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors duration-200"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Check-in
+                        </button>
+                      )}
+                      {player.checked_in && !player.eliminated && (
+                        <button
+                          onClick={() => handleEliminate(player.user_id)}
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors duration-200"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
+                  </td>
+
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {player.rebuys_paid && (player.addon_used ? player.addon_paid : true) ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Pago
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => openSettlement(player)}
+                        className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors duration-200"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                        </svg>
+                        Acertar
+                      </button>
+                    )}
+                  </td>
+                  
+                  {(tournament?.rebuy?.allowed || tournament?.addon?.allowed) && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-wrap gap-2">
+                        {tournament.rebuy?.allowed && !player.eliminated && (
+                          <>
+                            <button
+                              onClick={() => handleRebuyClick(player, false)}
+                              className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
+                              title={`Adicionar ${tournament.rebuy.single.stack.toLocaleString()} fichas por R$ ${tournament.rebuy.single.price}`}
+                            >
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                              Rebuy Simples
+                            </button>
+                            <button
+                              onClick={() => handleRebuyClick(player, true)}
+                              className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors duration-200"
+                              title={`Adicionar ${tournament.rebuy.double.stack.toLocaleString()} fichas por R$ ${tournament.rebuy.double.price}`}
+                            >
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                              Rebuy Duplo
+                            </button>
+                          </>
+                        )}
+
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {players.length === 0 && (
+            <div className="text-center py-12">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum jogador registrado</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Comece adicionando jogadores ao torneio usando os formulários acima.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Settlement Modal */}
       {showSettlement && settlementPlayer && (
         <SettlementModal
           isOpen={showSettlement}
