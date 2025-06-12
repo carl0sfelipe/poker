@@ -420,9 +420,9 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Manual Registration */}
-            <div className="space-y-4">
+            <div className="space-y-4 flex flex-col">
               <h4 className="font-medium text-gray-900 border-b border-gray-200 pb-2">Novo Jogador</h4>
-              <div className="space-y-4">
+              <div className="space-y-4 flex-grow">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
                   <input
@@ -443,6 +443,8 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
                   />
                 </div>
+              </div>
+              <div className="mt-auto">
                 <button
                   onClick={handleManualRegister}
                   disabled={!newPlayer.name || !newPlayer.email}
@@ -457,9 +459,9 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
             </div>
 
             {/* Existing User Registration */}
-            <div className="space-y-4">
+            <div className="space-y-4 flex flex-col">
               <h4 className="font-medium text-gray-900 border-b border-gray-200 pb-2">Usuário Existente</h4>
-              <div className="space-y-4">
+              <div className="space-y-4 flex-grow">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Selecionar Usuário</label>
                   <select
@@ -480,6 +482,22 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
                     ))}
                   </select>
                 </div>
+                
+                {availableUsers.length === 0 && existingUsers.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <svg className="w-5 h-5 text-blue-400 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="text-sm text-blue-700">
+                        <p className="font-medium">Todos os usuários já estão registrados</p>
+                        <p className="mt-1">Para adicionar mais jogadores, use o formulário de "Novo Jogador".</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="mt-auto">
                 <button
                   onClick={handleRegisterExisting}
                   disabled={!selectedUserId || availableUsers.length === 0}
@@ -491,20 +509,6 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
                   Registrar Usuário
                 </button>
               </div>
-              
-              {availableUsers.length === 0 && existingUsers.length > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start">
-                    <svg className="w-5 h-5 text-blue-400 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="text-sm text-blue-700">
-                      <p className="font-medium">Todos os usuários já estão registrados</p>
-                      <p className="mt-1">Para adicionar mais jogadores, use o formulário de "Novo Jogador".</p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

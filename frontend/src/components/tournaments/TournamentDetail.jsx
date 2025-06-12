@@ -5,68 +5,128 @@ import authService from '../../services/authService';
 import TournamentTimer from './TournamentTimer';
 import PlayerManagement from './PlayerManagement';
 
-// Collapsible Card Component with Poker-themed animations
+// CSS-in-JS for card slide animations
+const cardStyles = `
+  @keyframes slideInFromLeft {
+    0% {
+      transform: translateX(-100%) scale(0.95);
+      opacity: 0;
+    }
+    100% {
+      transform: translateX(0) scale(1);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideOutToLeft {
+    0% {
+      transform: translateX(0) scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(-100%) scale(0.95);
+      opacity: 0;
+    }
+  }
+  
+  .card-reveal {
+    animation: slideInFromLeft 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  }
+  
+  .card-hide {
+    animation: slideOutToLeft 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  }
+`;
+
+// Inject styles into document head
+if (typeof document !== 'undefined') {
+  const styleElement = document.createElement('style');
+  styleElement.innerHTML = cardStyles;
+  if (!document.head.querySelector('style[data-poker-cards]')) {
+    styleElement.setAttribute('data-poker-cards', 'true');
+    document.head.appendChild(styleElement);
+  }
+}
+
+// Collapsible Card Component with smooth side slide animation
 const CollapsibleCard = ({ title, icon, children, defaultOpen = false, cardColor = 'gray' }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   const colorClasses = {
     gray: {
-      bg: 'bg-gray-50',
+      bg: 'bg-gradient-to-r from-gray-50 to-gray-100',
       border: 'border-gray-200',
       icon: 'text-gray-600',
-      arrow: 'text-gray-400',
-      hover: 'hover:bg-gray-100'
+      hover: 'hover:from-gray-100 hover:to-gray-200',
+      content: 'bg-gray-50'
     },
     green: {
-      bg: 'bg-green-50',
+      bg: 'bg-gradient-to-r from-green-50 to-emerald-100',
       border: 'border-green-200',
       icon: 'text-green-600',
-      arrow: 'text-green-400',
-      hover: 'hover:bg-green-100'
+      hover: 'hover:from-green-100 hover:to-emerald-200',
+      content: 'bg-green-50'
     },
     purple: {
-      bg: 'bg-purple-50',
+      bg: 'bg-gradient-to-r from-purple-50 to-violet-100',
       border: 'border-purple-200',
       icon: 'text-purple-600',
-      arrow: 'text-purple-400',
-      hover: 'hover:bg-purple-100'
+      hover: 'hover:from-purple-100 hover:to-violet-200',
+      content: 'bg-purple-50'
     },
     orange: {
-      bg: 'bg-orange-50',
+      bg: 'bg-gradient-to-r from-orange-50 to-amber-100',
       border: 'border-orange-200',
       icon: 'text-orange-600',
-      arrow: 'text-orange-400',
-      hover: 'hover:bg-orange-100'
+      hover: 'hover:from-orange-100 hover:to-amber-200',
+      content: 'bg-orange-50'
     }
   };
 
   const colors = colorClasses[cardColor] || colorClasses.gray;
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ${isOpen ? 'ring-2 ring-blue-200' : ''}`}>
+    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ${
+      isOpen ? 'ring-2 ring-blue-200 shadow-lg' : 'hover:shadow-md'
+    }`}>
+      {/* Header sempre visível */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-6 py-4 flex items-center justify-between transition-all duration-300 ${colors.hover} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset`}
+        className={`w-full px-6 py-4 flex items-center justify-between transition-all duration-300 ${colors.bg} ${colors.hover} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset border-b ${colors.border} group`}
       >
         <div className="flex items-center">
-          <div className={`${colors.icon} mr-3 transition-transform duration-300 ${isOpen ? 'scale-110' : ''}`}>
+          <div className={`${colors.icon} mr-3 transition-all duration-300 group-hover:scale-110 ${isOpen ? 'rotate-12' : ''}`}>
             {icon}
           </div>
           <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          {/* Poker suit decoration */}
+          <div className="ml-3 text-xs opacity-30 text-gray-400">
+            ♠ ♦
+          </div>
         </div>
-        <div className={`transition-all duration-500 ease-in-out ${colors.arrow} ${isOpen ? 'transform rotate-180' : ''}`}>
+        
+        <div className={`transition-all duration-300 ${colors.icon} ${isOpen ? 'rotate-180' : ''} group-hover:scale-110`}>
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
           </svg>
         </div>
       </button>
       
-      <div className={`transition-all duration-500 ease-in-out overflow-hidden ${
-        isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+      {/* Content area with horizontal slide animation */}
+      <div className={`transition-all duration-500 ease-out overflow-hidden ${
+        isOpen ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
       }`}>
-        <div className={`px-6 pb-6 ${colors.bg} border-t ${colors.border}`}>
-          <div className="pt-4">
+        <div className={`${colors.content} relative overflow-hidden`}>
+          {/* Content with slide animation */}
+          <div className={`px-6 py-6 transition-all duration-500 delay-100 ${
+            isOpen ? 'opacity-100 transform translate-x-0 card-reveal' : 'opacity-0 transform -translate-x-4'
+          }`}>
             {children}
+          </div>
+          
+          {/* Decorative poker elements */}
+          <div className="absolute bottom-2 right-6 text-xs opacity-20 text-gray-400">
+            ♥ ♣
           </div>
         </div>
       </div>
@@ -387,7 +447,7 @@ const TournamentDetail = () => {
             <div className="grid grid-cols-1 gap-6">
               {/* Basic Info Card */}
               <CollapsibleCard
-                title="Informações Básicas"
+                title="Informações"
                 defaultOpen={true}
                 cardColor="gray"
                 icon={
