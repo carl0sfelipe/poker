@@ -630,7 +630,7 @@ const CreateTournament = () => {
                 </div>
               </div>
             )}
-            {/* BÔNUS DE ADD-ON */}
+            {/* BÔNUS DE ADD-ON 
             <div className="mt-8">
               <h3 className="text-lg font-medium mb-4">Bônus de Add-on</h3>
               <div className="flex gap-4 mb-2">
@@ -703,7 +703,7 @@ const CreateTournament = () => {
                   </div>
                 </div>
               )}
-            </div>
+            </div>*/}
           </div>
 
           <div className="border-t pt-6">

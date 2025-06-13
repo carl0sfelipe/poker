@@ -529,7 +529,7 @@ const TournamentDetail = () => {
                     {/* Bônus exclusivos do add-on */}
                     {tournament.addon_bonuses && tournament.addon_bonuses.length > 0 && (
                       <div className="border-t border-purple-300 pt-3 mt-3">
-                        <div className="font-medium text-purple-900 mb-2">Bônus Exclusivos</div>
+                        <div className="font-medium text-purple-900 mb-2">Bônus</div>
                         {tournament.addon_bonuses.map((bonus, index) => (
                           <div key={index} className="grid grid-cols-2 gap-2 text-sm mb-2 last:mb-0">
                             <div className="text-gray-600">Stack: <span className="font-medium text-purple-700">+{bonus.stack.toLocaleString()}</span></div>

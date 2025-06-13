@@ -178,6 +178,13 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
   const handleRebuy = async (userId, isDouble = false) => {
     if (!isStaff) return;
     try {
+      // Check if the player's rebuy payment is already settled
+      const player = players.find(p => p.user_id === userId);
+      if (player && player.rebuys_paid) {
+        setError('Não é possível fazer rebuy: pagamento já foi acertado');
+        return;
+      }
+
       await tournamentService.performRebuy(tournamentId, userId, isDouble);
       const data = await tournamentService.getById(tournamentId);
       
@@ -271,6 +278,12 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
   const handleRebuyClick = (player, isDouble = false) => {
     if (!isStaff) return;
     
+    // Check if payment is already settled
+    if (player.rebuys_paid) {
+      setError('Não é possível fazer rebuy: pagamento já foi acertado');
+      return;
+    }
+    
     // Se o jogador já fez check-in, faz rebuy direto
     if (player.checked_in) {
       handleRebuy(player.user_id, isDouble);
@@ -287,6 +300,14 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
   // Função para lidar com a confirmação do modal de check-in
   const handleCheckInConfirm = async () => {
     try {
+      // Check if the player's rebuy payment is already settled
+      const player = players.find(p => p.user_id === pendingRebuy.userId);
+      if (player && player.rebuys_paid) {
+        setError('Não é possível fazer rebuy: pagamento já foi acertado');
+        handleCheckInCancel();
+        return;
+      }
+
       // Primeiro faz o check-in
       await tournamentService.checkIn(tournamentId, pendingRebuy.userId);
       
@@ -715,7 +736,7 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
                   {(tournament?.rebuy?.allowed || tournament?.addon?.allowed) && (
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-wrap gap-2">
-                        {tournament.rebuy?.allowed && !player.eliminated && (
+                        {tournament.rebuy?.allowed && !player.eliminated && !player.rebuys_paid && (
                           <>
                             <button
                               onClick={() => handleRebuyClick(player, false)}
@@ -738,6 +759,14 @@ const PlayerManagement = ({ tournamentId, refreshKey = 0, registrationClosed = f
                               Rebuy Duplo
                             </button>
                           </>
+                        )}
+                        {tournament.rebuy?.allowed && !player.eliminated && player.rebuys_paid && (
+                          <div className="flex items-center text-xs text-gray-500">
+                            <svg className="w-4 h-4 mr-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Pagamento Acertado
+                          </div>
                         )}
 
                       </div>

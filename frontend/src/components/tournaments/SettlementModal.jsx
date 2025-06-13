@@ -34,14 +34,18 @@ const SettlementModal = ({ isOpen, onClose, player, tournament }) => {
       total += Number(tournament?.buy_in || 0);
     }
 
-    // Adiciona valor dos bônus selecionados
-    if (tournament?.bonuses?.length > 0 && selectedBonuses.length > 0) {
+    // Calcula valor dos bônus
+    if (tournament?.bonuses?.length > 0) {
       tournament.bonuses.forEach(bonus => {
-        if (selectedBonuses.includes(bonus.name)) {
-          total += Number(bonus.price || 0);
+        // Se é um bônus válido (tem preço e não é addon_bonus)
+        if (bonus.price > 0 && !bonus.addon_bonus) {
+          // Se não está marcado como já pago, adiciona ao total
+          if (!selectedBonuses.includes(bonus.name)) {
+            total += Number(bonus.price || 0);
+          }
           
-          // Adiciona o valor do addon do bônus se estiver selecionado
-          if (bonus.addon && selectedBonusAddons.includes(bonus.name)) {
+          // Trata o addon do bônus da mesma forma
+          if (bonus.addon && !selectedBonusAddons.includes(bonus.name)) {
             total += Number(bonus.addon.price || 0);
           }
         }

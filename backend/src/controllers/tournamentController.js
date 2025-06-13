@@ -521,6 +521,11 @@ const tournamentController = {
 
       if (regError) throw regError;
 
+      // Check if rebuys are already settled/paid
+      if (registration.rebuys_paid) {
+        return res.status(400).json({ error: 'Cannot add rebuy: payment has already been settled' });
+      }
+
       // Add rebuy stack
       const rebuyStack = isDouble ? 
         tournament.rebuy.double.stack : 
