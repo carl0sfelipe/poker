@@ -88,8 +88,34 @@ const TournamentTimer = ({ tournament }) => {
   };
 
   const currentBlindLevel = tournament.blind_structure[currentLevel];
-  const currentSmallBlind = currentBlindLevel.smallBlind || currentBlindLevel.small_blind;
-  const currentBigBlind = currentBlindLevel.bigBlind || currentBlindLevel.big_blind;
+  const currentSmallBlind =
+    currentBlindLevel.smallBlind || currentBlindLevel.small_blind;
+  const currentBigBlind =
+    currentBlindLevel.bigBlind || currentBlindLevel.big_blind;
+
+  const nextBlindLevel =
+    tournament.blind_structure[currentLevel + 1] || null;
+  const nextSmallBlind =
+    nextBlindLevel?.smallBlind || nextBlindLevel?.small_blind;
+  const nextBigBlind =
+    nextBlindLevel?.bigBlind || nextBlindLevel?.big_blind;
+
+  // Avisos de 1 minuto e contagem regressiva de 10 segundos
+  useEffect(() => {
+    if (!isRunning) return;
+
+    if (timeLeft === 60 && nextBlindLevel) {
+      const msg = new SpeechSynthesisUtterance(
+        `One minute remaining. Next blinds ${nextSmallBlind} slash ${nextBigBlind}.`
+      );
+      window.speechSynthesis?.speak(msg);
+    }
+
+    if (timeLeft <= 10 && timeLeft > 0) {
+      const msg = new SpeechSynthesisUtterance(timeLeft.toString());
+      window.speechSynthesis?.speak(msg);
+    }
+  }, [timeLeft, isRunning, nextSmallBlind, nextBigBlind, nextBlindLevel]);
 
   // Calculate the levels to show for the current page
   const startIndex = (currentPage - 1) * levelsPerPage;
@@ -108,6 +134,12 @@ const TournamentTimer = ({ tournament }) => {
           <div className="text-xl mb-4">
             Level {currentBlindLevel.level}: {currentSmallBlind}/{currentBigBlind}
           </div>
+          {timeLeft <= 60 && nextBlindLevel && (
+            <div className="text-red-600 mb-2">
+              {`Next blinds ${nextSmallBlind}/${nextBigBlind} in `}
+              {timeLeft > 10 ? formatTime(timeLeft) : timeLeft}
+            </div>
+          )}
           
           <div className="flex justify-center space-x-4 mb-6">
             {!isRunning ? (
