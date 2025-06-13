@@ -30,7 +30,9 @@ const TournamentTimer = ({ tournament }) => {
           startTime: startTime.toLocaleTimeString(),
           endTime: endTime.toLocaleTimeString(),
           smallBlind: level.smallBlind || level.small_blind,
-          bigBlind: level.bigBlind || level.big_blind
+          bigBlind: level.bigBlind || level.big_blind,
+          big_ante: level.big_ante,
+          ante: level.ante
         });
 
         currentTime = new Date(endTime);
@@ -88,8 +90,38 @@ const TournamentTimer = ({ tournament }) => {
   };
 
   const currentBlindLevel = tournament.blind_structure[currentLevel];
-  const currentSmallBlind = currentBlindLevel.smallBlind || currentBlindLevel.small_blind;
-  const currentBigBlind = currentBlindLevel.bigBlind || currentBlindLevel.big_blind;
+  const currentSmallBlind =
+    currentBlindLevel.smallBlind || currentBlindLevel.small_blind;
+  const currentBigBlind =
+    currentBlindLevel.bigBlind || currentBlindLevel.big_blind;
+  const currentAnte = currentBlindLevel.big_ante ?? currentBlindLevel.ante ?? null;
+
+  const nextBlindLevel =
+    tournament.blind_structure[currentLevel + 1] || null;
+  const nextSmallBlind =
+    nextBlindLevel?.smallBlind || nextBlindLevel?.small_blind;
+  const nextBigBlind =
+    nextBlindLevel?.bigBlind || nextBlindLevel?.big_blind;
+  const nextAnte = nextBlindLevel?.big_ante ?? nextBlindLevel?.ante ?? null;
+
+  // Avisos de 1 minuto e contagem regressiva de 10 segundos
+  useEffect(() => {
+    if (!isRunning) return;
+
+    if (timeLeft === 60 && nextBlindLevel) {
+      const nextInfo = `${nextSmallBlind} slash ${nextBigBlind}` +
+        (nextAnte ? ` with ${nextAnte} ante` : '');
+      const msg = new SpeechSynthesisUtterance(
+        `One minute remaining. Next blinds ${nextInfo}.`
+      );
+      window.speechSynthesis?.speak(msg);
+    }
+
+    if (timeLeft <= 10 && timeLeft > 0) {
+      const msg = new SpeechSynthesisUtterance(timeLeft.toString());
+      window.speechSynthesis?.speak(msg);
+    }
+  }, [timeLeft, isRunning, nextSmallBlind, nextBigBlind, nextBlindLevel]);
 
   // Calculate the levels to show for the current page
   const startIndex = (currentPage - 1) * levelsPerPage;
@@ -107,7 +139,15 @@ const TournamentTimer = ({ tournament }) => {
           </div>
           <div className="text-xl mb-4">
             Level {currentBlindLevel.level}: {currentSmallBlind}/{currentBigBlind}
+            {currentAnte && ` (ante ${currentAnte})`}
           </div>
+          {timeLeft <= 60 && nextBlindLevel && (
+            <div className="text-red-600 mb-2">
+              {`Next blinds ${nextSmallBlind}/${nextBigBlind}`}
+              {nextAnte && ` (ante ${nextAnte})`} in{' '}
+              {timeLeft > 10 ? formatTime(timeLeft) : timeLeft}
+            </div>
+          )}
           
           <div className="flex justify-center space-x-4 mb-6">
             {!isRunning ? (
@@ -142,6 +182,7 @@ const TournamentTimer = ({ tournament }) => {
                 <tr>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Blinds</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ante</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
                 </tr>
               </thead>
@@ -159,6 +200,7 @@ const TournamentTimer = ({ tournament }) => {
                   >
                     <td className="px-4 py-2">{level.level}</td>
                     <td className="px-4 py-2">{level.smallBlind}/{level.bigBlind}</td>
+                    <td className="px-4 py-2">{level.big_ante ?? level.ante ?? '-'}</td>
                     <td className="px-4 py-2">{level.startTime}</td>
                   </tr>
                 ))}
