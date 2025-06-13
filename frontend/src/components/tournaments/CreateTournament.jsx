@@ -107,6 +107,13 @@ const CreateTournament = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const levelsPerPage = 10;
 
+  // Dados para gerar nova estrutura de blinds
+  const [generator, setGenerator] = useState({
+    sb1: 100,
+    sb2: 200,
+    duration: 20
+  });
+
   useEffect(() => {
     if (formData.blind_mode === 'preset') {
       const structure = getRecommendedStructure(formData.starting_stack);
@@ -115,8 +122,30 @@ const CreateTournament = () => {
         blind_structure: structure.levels
       }));
       setSelectedPreset(formData.starting_stack <= 15000 ? 'small' : formData.starting_stack <= 25000 ? 'medium' : 'large');
+    } else {
+      // Regenerar estrutura customizada quando valores do gerador mudarem
+      const ratio = generator.sb1 > 0 && generator.sb2 > 0
+        ? generator.sb2 / generator.sb1
+        : 1.5;
+      const levels = [];
+      for (let i = 1; i <= 20; i++) {
+        let sb;
+        if (i === 1) sb = generator.sb1;
+        else if (i === 2) sb = generator.sb2;
+        else sb = roundToNiceNumber(levels[i - 2].small_blind * ratio);
+        levels.push({
+          level: i,
+          small_blind: sb,
+          big_blind: sb * 2,
+          duration: generator.duration
+        });
+      }
+      setFormData(prev => ({
+        ...prev,
+        blind_structure: levels
+      }));
     }
-  }, [formData.starting_stack, formData.blind_mode]);
+  }, [formData.starting_stack, formData.blind_mode, generator]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -199,6 +228,15 @@ const CreateTournament = () => {
       ...formData,
       blind_structure: newLevels.map((level, i) => ({ ...level, level: i + 1 }))
     });
+  };
+
+  const handleGeneratorChange = (field, value) => {
+    const num = parseInt(value) || 0;
+    setGenerator(prev => ({
+      ...prev,
+      [field]: num,
+      ...(field === 'sb1' && { sb2: roundToNiceNumber(num * 1.5) })
+    }));
   };
 
   const handleNumberChange = (value, field, index = null) => {
@@ -420,6 +458,45 @@ const CreateTournament = () => {
           )}
 
           <div className="space-y-4">
+            {formData.blind_mode === 'custom' && (
+              <div className="border p-4 rounded-md bg-gray-50">
+                <h4 className="font-medium mb-2">Generate New Structure</h4>
+                <div className="flex flex-wrap gap-4 items-end">
+                  <div>
+                    <label className="block text-sm">Level 1 SB</label>
+                    <input
+                      type="number"
+                      className="w-24 rounded-md border-gray-300 shadow-sm"
+                      value={generator.sb1}
+                      onChange={e => handleGeneratorChange('sb1', e.target.value)}
+                      min="1"
+                    />
+                  </div>
+                  <div className="pt-6">/ {generator.sb1 * 2}</div>
+                  <div>
+                    <label className="block text-sm">Level 2 SB</label>
+                    <input
+                      type="number"
+                      className="w-24 rounded-md border-gray-300 shadow-sm"
+                      value={generator.sb2}
+                      onChange={e => handleGeneratorChange('sb2', e.target.value)}
+                      min="1"
+                    />
+                  </div>
+                  <div className="pt-6">/ {generator.sb2 * 2}</div>
+                  <div>
+                    <label className="block text-sm">Duration</label>
+                    <input
+                      type="number"
+                      className="w-24 rounded-md border-gray-300 shadow-sm"
+                      value={generator.duration}
+                      onChange={e => handleGeneratorChange('duration', e.target.value)}
+                      min="1"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-medium">Blind Levels</h3>
               {formData.blind_mode === 'custom' && (
