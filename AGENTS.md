@@ -1,184 +1,124 @@
-# Poker Platform – Database Schema (public)
+# AGENTS.md – Poker Tourney Manager
 
-> **Versão gerada automaticamente – *06 Jun 2025***
->
-> Este documento agora reflete o novo fluxo de trabalho para alterações no banco de dados e no sistema.
+> **Purpose:** Instruct an autonomous coding agent (e.g. OpenAI Codex, Dev‑GPT, etc.) to build and extend the Poker Tourney Manager MVP in an efficient, deterministic way. This file is the single source of truth for requirements that are **implementation‑ready**. Treat all unchecked boxes as TODOs.
 
 ---
 
-## Fluxo de trabalho para alterações
+## 1. System Snapshot
 
-### Modo "ask"
-1. Quando uma alteração for solicitada, será fornecido:
-   - Um script SQL para rodar no Supabase.
-   - Um resumo explicando o impacto da alteração.
-2. O script SQL deve ser executado no Supabase antes de aprovar a alteração.
+* **Stack**
+  `React 18 + Vite + Tailwind` → `Node.js 20 (Express BFF)` → `Supabase (PostgreSQL 15)`
+  State: `Zustand`. Auth: Supabase Auth (JWT).
+  Deploy: Docker → Fly.io.
+* **Roles**
+  `admin`, `staff`, `dealer`, `player` (a.k.a. *user*).
+* **Schema v0.3** (mirrors Supabase). Keys are `uuid` unless noted.
 
-### Modo "agent"
-1. Após a aprovação, considera-se que o script SQL já foi executado no Supabase.
-2. As alterações no código serão feitas com base no novo estado do banco de dados.
-3. O `AGENTS.md` será atualizado para refletir as novas informações.
-
----
-
-## Diagrama geral
-
-```
-users ──┐             ┌──< registrations >── tournaments
-        └── user_id ─┘            │            └─ tournament_id
-                                   └─ FK refs ──┘
+```text
+users ─┐                tournaments ─┐
+       └─< registrations >──────────┘
 ```
 
----
+| Table             | Fields (non‑PK only)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Notes                                           |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| **users**         | `email text`, `password_hash text`, `role text`, `name varchar`, `created_at timestamptz`                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Role ENUM 👆                                    |
+| **tournaments**   | `name text`, `start_time timestamptz`, `starting_stack int4`, `blind_structure jsonb`, `status text`, `bonuses jsonb`, `addon jsonb`, `rebuy jsonb`, `rebuy_max_level int4`, `max_stack_for_single_rebuy int4`, `addon_break_level int4`, `current_level int4`, `current_blind_index int4`, `is_break bool`, `buy_in int4`, `addon_bonuses jsonb`, `multiplier numeric`                                                                                                                                                                       | `status` ENUM: *planned*, *running*, *finished* |
+| **registrations** | `user_id`, `tournament_id`, `checked_in bool`, `seat_number int4`, `table_number int4`, `finish_place int4`, `current_stack int4`, `selected_bonuses text[]`, `rebuys jsonb`, `addon_used bool`, `single_rebuys int4`, `double_rebuys int4`, `eliminated bool`, `stack_at_rebuy int4`, `elimination_level int4`, `last_rebuy_level int4`, `elimination_order int4`, `rebuys_paid bool`, `addon_paid bool`, `payment_status text`, `payment_timestamp timestamptz`, `paid_bonuses jsonb`, `bonus_addons_used text[]`, `created_at timestamptz` | FK on delete cascade.                           |
 
-## Tabelas
-
-### 1. `users`
-
-| Coluna          | Tipo          | PK | Nullable | Default/Extra       | Descrição                      |
-| --------------- | ------------- | -- | -------- | ------------------- | ------------------------------ |
-| `id`            | `uuid`        | ✔  | NO       | `gen_random_uuid()` | Identificador único do usuário |
-| `email`         | `text`        |    | NO       |                     | E‑mail de login (único)        |
-| `password_hash` | `text`        |    | NO       |                     | Hash BCrypt / Argon2           |
-| `role`          | `text`        |    | NO       | `'player'`          | Papel (player, staff, admin)   |
-| `created_at`    | `timestamptz` |    | NO       | `now()`             | Timestamp de criação           |
-| `name`          | `varchar`     |    | SIM      |                     | Nome de exibição               |
-
-**Primary Key:** (`id`)
+> **Row‑Level Security (RLS)** rules MUST ensure users can only see rows with same `id` OR tournaments where they are registered, except admins.
 
 ---
 
-### 2. `tournaments`
+## 2. High‑Level Acceptance Criteria (MVP)
 
-| Coluna                       | Tipo          | PK | Nullable | Default/Extra       | Descrição                                  |
-| ---------------------------- | ------------- | -- | -------- | ------------------- | ------------------------------------------ |
-| `id`                         | `uuid`        | ✔  | NO       | `gen_random_uuid()` | Identificador do torneio                   |
-| `name`                       | `text`        |    | NO       |                     | Nome do torneio                            |
-| `start_time`                 | `timestamptz` |    | NO       |                     | Data/hora de início                        |
-| `starting_stack`             | `int4`        |    | NO       |                     | Stack inicial em fichas                    |
-| `blind_structure`            | `jsonb`       |    | NO       |                     | Estrutura completa de blinds               |
-| `status`                     | `text`        |    | NO       | `'scheduled'`       | Estado (scheduled, running, paused, done…) |
-| `created_at`                 | `timestamptz` |    | NO       | `now()`             | Timestamp de criação                       |
-| `bonuses`                    | `jsonb`       |    | SIM      |                     | Config. de bônus (tickets, promoções)      |
-| `addon`                      | `jsonb`       |    | SIM      |                     | Configuração de addon                      |
-| `rebuy`                      | `jsonb`       |    | SIM      |                     | Regras de rebuy                            |
-| `rebuy_max_level`            | `int4`        |    | SIM      |                     | Nível (round) máximo para rebuy            |
-| `max_stack_for_single_rebuy` | `int4`        |    | SIM      |                     | Stack máximo permitido num rebuy simples   |
-| `addon_break_level`          | `int4`        |    | SIM      |                     | Nível em que o addon é permitido           |
-| `current_level`              | `int4`        |    | SIM      |                     | Nível atual (runtime)                      |
-| `current_blind_index`        | `int4`        |    | SIM      |                     | Posição na lista de blinds                 |
-| `is_break`                   | `bool`        |    | SIM      | `false`             | Flag se o torneio está em intervalo        |
+* [ ] **Auth flow** via Supabase Auth, email/password only. 🔒
+* [ ] **CRUD Tournaments** (admin/staff): create → edit → soft‑delete.
+* [ ] **Self‑registration** to tournaments (player) until `late_reg_end` (derived from blind structure).
+* [ ] **Rebuy / Add‑on / Elimination** endpoints & UI actions execute in ≤ 300 ms.
+* [ ] **Blind timer** (server derives `current_level`, FE renders full‑screen TV mode; emits WebSocket `blindUp` event).
+* [ ] **Auto‑payout calculator** uses configured percentages.
+* [ ] **Ranking service** recomputes points after every tournament finish and caches monthly + semester boards.
+* [ ] **CSV export** endpoint `/tournaments/:id/export` yields ISO‑8601 timestamped file.
 
-**Primary Key:** (`id`)
+> Unit tests ≥ 80 % coverage on business services.
+> Cypress E2E: login, create tourney, register 2 players, finish tournament, verify ranking.
 
 ---
 
-### 3. `registrations`
+## 3. API Contract (REST‑like)
 
-| Coluna              | Tipo             | PK | Nullable | Default/Extra         | Descrição                                |
-| ------------------- | ---------------- | -- | -------- | --------------------- | ---------------------------------------- |
-| `id`                | `uuid`           | ✔  | NO       | `gen_random_uuid()`   | Identificador da inscrição               |
-| `user_id`           | `uuid`           |    | NO       | FK → `users.id`       | Jogador inscrito                         |
-| `tournament_id`     | `uuid`           |    | NO       | FK → `tournaments.id` | Torneio correspondente                   |
-| `checked_in`        | `bool`           |    | NO       | `false`               | Check‑in confirmado?                     |
-| `seat_number`       | `int4`           |    | SIM      |                       | Nº do assento                            |
-| `table_number`      | `int4`           |    | SIM      |                       | Mesa                                     |
-| `finish_place`      | `int4`           |    | SIM      |                       | Colocação final                          |
-| `created_at`        | `timestamptz`    |    | NO       | `now()`               | Timestamp de inscrição                   |
-| `current_stack`     | `int4`           |    | SIM      |                       | Stack atual (runtime)                    |
-| `selected_bonuses`  | `_text` (array)  |    | SIM      |                       | Bônus escolhidos                         |
-| `rebuys`            | `_jsonb` (array) |    | SIM      |                       | Histórico de rebuys                      |
-| `addon_used`        | `bool`           |    | NO       | `false`               | Usou addon?                              |
-| `single_rebuys`     | `int4`           |    | NO       | `0`                   | Qtde de rebuy simples                    |
-| `double_rebuys`     | `int4`           |    | NO       | `0`                   | Qtde de rebuy duplo                      |
-| `eliminated`        | `bool`           |    | NO       | `false`               | Já foi eliminado?                        |
-| `stack_at_rebuy`    | `int4`           |    | SIM      |                       | Stack quando fez rebuy                   |
-| `elimination_level` | `int4`           |    | SIM      |                       | Level em que foi eliminado               |
-| `last_rebuy_level`  | `int4`           |    | SIM      |                       | Level do último rebuy                    |
-| `elimination_order` | `int4`           |    | SIM      |                       | Ordem cronológica de eliminação          |
-| `rebuys_paid`       | `bool`           |    | NO       | `false`               | Pagou pelos rebuys?                      |
-| `addon_paid`        | `bool`           |    | NO       | `false`               | Pagou pelo addon?                        |
-| `payment_status`    | `text`           |    | NO       | `'pending'`           | pending / paid / refunded                |
-| `payment_timestamp` | `timestamptz`    |    | SIM      |                       | Horário da última tentativa de pagamento |
+| Verb  | Path                           | Auth        | Purpose                    |
+| ----- | ------------------------------ | ----------- | -------------------------- |
+| POST  | `/auth/signup`                 | –           | New account (player)       |
+| POST  | `/auth/login`                  | –           | JWT                        |
+| POST  | `/tournaments`                 | admin,staff | Create tournament          |
+| GET   | `/tournaments`                 | any         | List visible tournaments   |
+| PATCH | `/tournaments/:id`             | admin,staff | Update fields (see schema) |
+| POST  | `/tournaments/:id/register`    | player      | Join tournament            |
+| POST  | `/registrations/:id/rebuy`     | staff       | Record rebuy               |
+| POST  | `/registrations/:id/addon`     | staff       | Record add‑on              |
+| POST  | `/registrations/:id/eliminate` | staff       | Mark eliminated            |
+| POST  | `/tournaments/:id/finish`      | staff       | Auto‑rank & payout         |
+| GET   | `/ranking?period=monthly`      | any         | Leaderboard                |
+| GET   | `/tournaments/:id/export`      | admin,staff | CSV download               |
 
-**Primary Key:** (`id`)
-
-**Foreign Keys:**
-
-* `user_id` → `users(id)`
-* `tournament_id` → `tournaments(id)`
+JSON schemas reside in `api-contract/*.json` (generate).
 
 ---
 
-## Índice de relacionamento
+## 4. Front‑End Work Breakdown
 
-| Origem                        | FK               | Destino       | Cardinalidade |
-| ----------------------------- | ---------------- | ------------- | ------------- |
-| `registrations.user_id`       | `users.id`       | `users`       | N : 1         |
-| `registrations.tournament_id` | `tournaments.id` | `tournaments` | N : 1         |
+### 4.1 Pages & Routes
 
----
+* `/login`, `/signup`
+* `/dashboard` *(list & quick actions)*
+* `/tournaments/:id`
+* `/tournaments/:id/admin` *(staff cockpit)*
+* `/ranking` *(filters: month, semester)*
+* `/clock/:id` *(TV full‑screen timer, read‑only)*
 
-## Regras e observações de negócio
+### 4.2 Components
 
-1. **Um usuário pode ter múltiplas inscrições** (`registrations`) em torneios diferentes, mas no MVP assumimos **uma inscrição por torneio**.
-2. **Pagamentos**: os campos `payment_status` e `payment_timestamp` registram a quitação de rebuy/addon; pagamentos parciais são controlados pelos flags `rebuys_paid` e `addon_paid`.
-3. **Runtime state** (blinds correntes, stacks etc.) é persistido diretamente nas tabelas para simplificar o MVP; versão futura deve mover para tabelas de histórico ou Redis.
+* `<BlindClock>` ↔ WebSocket `blindUp`
+* `<RebuyDialog>` & `<AddonDialog>`
+* `<EliminationTable>` sortable
+* `<RankTable>` paginated
 
----
-
-## Scripts SQL para Supabase
-
-### Atualizar Preço dos Bônus
-
-Para adicionar ou atualizar o preço do bônus Staff em torneios existentes, use o script abaixo diretamente no console SQL do Supabase:
-
-```sql
--- Script para adicionar preço (R$ 10) ao bônus Staff em todos os torneios existentes
-UPDATE tournaments
-SET bonuses = jsonb_set(
-  bonuses,
-  '{0}',
-  bonuses->0 || '{"price": 10}'::jsonb
-)
-WHERE 
-  bonuses->0->>'name' = 'Bonus Staff' 
-  AND (bonuses->0->>'price' IS NULL OR (bonuses->0->>'price')::int = 0);
-
--- Adiciona preço 0 aos outros bônus caso não tenham
-UPDATE tournaments
-SET bonuses = jsonb_set(
-  bonuses,
-  '{1}',
-  bonuses->1 || '{"price": 0}'::jsonb
-)
-WHERE 
-  bonuses->1->>'name' = 'Bonus Horario'
-  AND bonuses->1->>'price' IS NULL;
-
-UPDATE tournaments
-SET bonuses = jsonb_set(
-  bonuses,
-  '{2}',
-  bonuses->2 || '{"price": 0}'::jsonb
-)
-WHERE 
-  bonuses->2->>'name' = 'Bonus Pix Antecipado'
-  AND bonuses->2->>'price' IS NULL;
-```
-
-**Observação:** Este projeto utiliza o Supabase diretamente, sem migrações tradicionais. Execute esses scripts diretamente no console SQL do Supabase quando necessário atualizar a estrutura ou dados existentes.
+Use Tailwind + shadcn/ui (`Dialog`, `Table`, `Button`).
 
 ---
 
-### Próximos passos sugeridos
+## 5. Coding Conventions
 
-| Sprint | Item                                                                         | Comentário                          |
-| ------ | ---------------------------------------------------------------------------- | ----------------------------------- |
-| 1      | Índices em `registrations (tournament_id, user_id)`                          | Optimizar consultas frequentes      |
-| 2      | Tabela `tables` para controle de mesas físicas                               | Remove duplicidade (`table_number`) |
-| 3      | Trigger de atualização automática de `current_level` / `current_blind_index` | Garantir consistência runtime       |
+* TypeScript strict mode everywhere.
+* ESLint + Prettier config in repo root (extend `airbnb-typescript`).
+* Commit message style: Conventional Commits.
+* Branch naming: `feat/<scope>`, `fix/<scope>`, `chore/<scope>`.
 
 ---
 
-*Fim do documento*
+## 6. Milestones & Sprint 0 TODO
+
+1. **Setup repo** with Turbo monorepo (`apps/web`, `apps/api`, `packages/db`).
+2. Scaffold Supabase with provided schema SQL (see `infra/001_init.sql`).
+3. Implement Auth flow front & back.
+4. CRUD tournaments + basic list page.
+5. Registration flow & initial blind clock prototype.
+6. Rebuy/Add‑on/Elimination endpoints + UI hooks.
+7. Auto‑finish routine & ranking service.
+8. Polish, responsive pass, Cypress tests.
+
+---
+
+## 7. Guidance to Codex
+
+* Always run `pnpm test` before proposing PR.
+* Prefer SQL `jsonb` operators (`\u003E`, `\u003E\u003E`) over full row fetch when updating partial `blind_structure`.
+* Keep server‑side logic idempotent—multiple identical rebuy requests must NOT create duplicates.
+* Use Supabase PostgREST realtime channel for `blindUp` broadcast.
+
+**If any requirement is ambiguous, create a GitHub Issue with label `clarification` instead of guessing.**
+
+---
+
+### END

@@ -1,0 +1,198 @@
+# Product Requirements Document (PRD)
+
+## Document Control
+
+| Item                       | Detail                                          |
+| -------------------------- | ----------------------------------------------- |
+| **Product Name (working)** | Poker Tourney Manager *(nome definitivo TBD)*   |
+| **Author**                 | Carlos (Product Owner) – assistido pelo ChatGPT |
+| **Version**                | 0.1 (Draft)                                     |
+| **Last Updated**           | 15 Jun 2025                                     |
+
+---
+
+## 1. Executive Summary
+
+Poker Tourney Manager é um sistema web para gerenciar torneios de poker ao vivo em clubes físicos e home games. O produto simplifica inscrições, controle financeiro (buy‑ins, rebuys, add‑ons), blind timer, eliminações e cálculo automático de ranking mensal/semestral. Seu MVP já contempla autenticação, criação de torneios e o fluxo completo até a coroação do campeão. Esta PRD detalha o escopo final do MVP e orienta as próximas etapas de desenvolvimento.
+
+---
+
+## 2. Problema a Resolver
+
+Organizadores de clubes e home games dependem de planilhas manuais e relógios externos para administrar torneios, gerando erros em inscrições, contabilidade e ranking. Isso reduz a experiência do jogador e a transparência do clube.
+
+---
+
+## 3. Objetivos do Produto
+
+1. **Reduzir em 90 %** o tempo gasto pelo staff para controlar inscrições e eliminados.
+2. **Eliminar erros de contagem** de rebuys/add‑ons e premiação.
+3. **Aumentar em 20 %** a retenção de jogadores, oferecendo ranking em tempo real.
+
+---
+
+## 4. Indicadores‑chave (KPIs)
+
+| Métrica                             | Alvo MVP |
+| ----------------------------------- | -------- |
+| Nº torneios criados por mês         | ≥ 10     |
+| Erros financeiros reportados        | 0        |
+| Jogadores ativos/mês                | ≥ 150    |
+| Tempo médio para registrar um rebuy | ≤ 5 s    |
+
+---
+
+## 5. Escopo MVP
+
+### 5.1 Funcionalidades Confirmadas
+
+1. **Autenticação & Perfis**
+
+   * Roles: Admin, Staff, Dealer, Jogador.
+2. **Criação de Torneio**
+
+   * Campos configuráveis: nome, data, buy‑in, tamanho inicial de stack, estrutura de blinds customizada, late reg até intervalo, multiplicador de pontos (ex.: 1.5× no último torneio do mês), regras de rebuy/re‑entry, add‑on.
+3. **Registro & Check‑in de Jogadores** (self‑service ou pelo staff).
+4. **Controle de Rebuy / Add‑on / Eliminação** com registro de valores em R\$.
+5. **Blind Timer**
+
+   * Página Full‑Screen para TV.
+   * Pausar/Reiniciar.
+6. **Cálculo de Premiação**
+
+   * Percentuais definidos na criação do torneio (ex.: 50/30/20).
+7. **Encerramento Automático**
+
+   * Campeão + ranking das demais posições.
+8. **Ranking Mensal & Semestral**
+
+   * Fórmula base: `(TotalPlayers - FinalPos + 1) × Multiplier`.
+   * Filtros por período e busca por jogador.
+9. **Relatórios & Export**
+
+   * CSV/Excel do torneio (inscrições, rebuy, addons, prêmios).
+10. **Config Presets**
+
+    * Estruturas de blinds salvas por admin.
+11. **Notificação Sonora** no navegador a cada subida de blind e última chamada de late reg.
+
+### 5.2 Não Funcional (MVP)
+
+* UX responsivo (desktop/tablet).
+* Tempo de resposta < 300 ms para operações CRUD.
+* Dados em Supabase com políticas row‑level security por clube.
+* Logs de erro no servidor; edição pós‑evento permitida somente para admins.
+
+---
+
+## 6. Fora do Escopo (MVP)
+
+| Item                                     | Justificativa          |
+| ---------------------------------------- | ---------------------- |
+| App mobile nativo                        | Adiado – foco web PWA. |
+| Logs de auditoria detalhados             | Adiado p/ fase 2.      |
+| Integração Pix / Stripe                  | Plano futuro.          |
+| Impressão de tickets                     | Adiado.                |
+| Sistema de mesas automáticas (seat draw) | Fase 2+.               |
+
+---
+
+## 7. Personas & Público‑Alvo
+
+1. **Bruno – Dono de Clube (Admin)**
+2. **Ana – Staff/Dealer**
+3. **Carlos – Jogador Regular**
+
+---
+
+## 8. Fluxo Macro de Torneio
+
+```mermaid
+graph LR
+A[Criação do Torneio] --> B[Late Registration / Check‑in]
+B --> C[Início do Timer]
+C --> D[Registros de Rebuy/Add‑on]
+D --> E[Eliminações]
+E -->|1 jogador restante| F[Coroar Campeão]
+F --> G[Premiação & Export]
+G --> H[Atualizar Ranking]
+```
+
+---
+
+## 9. Requisitos Funcionais Detalhados (RF)
+
+| ID    | Descrição                                         | Prioridade |
+| ----- | ------------------------------------------------- | ---------- |
+| RF‑01 | Usuário pode criar conta ou ser criado pelo staff | Alta       |
+| RF‑02 | Admin define estrutura de blinds custom           | Alta       |
+| RF‑03 | Staff registra rebuy em ≤ 5 s                     | Alta       |
+| RF‑04 | Sistema emite aviso sonoro no up de blind         | Média      |
+| RF‑05 | Encerramento automático quando sobra 1 jogador    | Alta       |
+| RF‑06 | Ranking mensal/semestral atualiza em tempo real   | Alta       |
+| RF‑07 | Export CSV/Excel via botão "Exportar"             | Média      |
+| RF‑08 | Admin pode editar qualquer registro pós‑torneio   | Alta       |
+
+---
+
+## 10. Requisitos Não Funcionais (RNF)
+
+| ID     | Descrição          | Meta               |
+| ------ | ------------------ | ------------------ |
+| RNF‑01 | Disponibilidade    | 99,5 %             |
+| RNF‑02 | Latência média API | ≤ 300 ms           |
+| RNF‑03 | Segurança          | JWT + RLS Supabase |
+| RNF‑04 | Acessibilidade     | WCAG AA            |
+
+---
+
+## 11. Tech Stack & Arquitetura
+
+* **Front‑end:** React + Vite + Tailwind.
+* **State:** Zustand.
+* **Back‑end:** Node.js (Express) como API BFF.
+* **DB:** Supabase Postgres (RLS por `club_id`).
+* **Deploy:** Docker + Fly.io.
+
+---
+
+## 12. Roadmap Pós‑MVP (Fase 2+)
+
+1. **Multi‑clube SaaS** (subdomínios + billing).
+2. Integração Pix/Stripe (pagamentos on‑line).
+3. Aplicativo PWA offline‑first.
+4. Logs de auditoria e versionamento de ações.
+5. Seat‑draw automático e suporte a multimesas.
+6. Internacionalização (EN pt‑BR -> EN + ES).
+
+---
+
+## 13. Monetização (TBD)
+
+* **Modelo SaaS por assinatura mensal** ou **licença por clube**. Detalhes a definir.
+
+---
+
+## 14. Riscos & Mitigações
+
+| Risco                               | Impacto | Mitigação                                          |
+| ----------------------------------- | ------- | -------------------------------------------------- |
+| Instabilidade Supabase free         | Alto    | Plano: migrar p/ tier pago ao atingir 500 usuários |
+| Complexidade ranking                | Médio   | Encapsular em service isolado + testes unitários   |
+| Resistência de staff a novo sistema | Médio   | UX simplificado + treinamento vídeo                |
+
+---
+
+## 15. Questões em Aberto
+
+1. Definir plano de assinatura e pricing.
+2. Escolher nome definitivo e branding.
+3. Decidir se logs de auditoria entram no MVP ou Fase 2.
+
+---
+
+> **Próximos Passos**
+> • Revisar PRD com stakeholders até 20 Jun 2025
+> • Priorizar backlog de user stories (Sprint 0)
+> • Definir wireframes das páginas de ranking e export
+> • Iniciar testes end‑to‑end com torneio real piloto em julho 2025
